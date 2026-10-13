@@ -1,0 +1,197 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+/**
+ * Seeds the NPICTT ministry brands and their branding.
+ *
+ * Usage: php bin/npictt-seed [--dry-run] [--data=path/to/ministries.php]
+ *
+ * Idempotent: brands are matched by slug and updated in place. Never deletes,
+ * and never touches the platform row or brand 1. Roles, staff, API keys,
+ * webhooks and gateways are intentionally not seeded.
+ */
+
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "This script must be run from the command line.\n");
+    exit(1);
+}
+
+$root = dirname(__DIR__);
+chdir($root);
+require $root . '/vendor/autoload.php';
+
+$opts = getopt('', ['dry-run', 'data:', 'help']);
+if (isset($opts['help'])) {
+    echo "Usage: php bin/npictt-seed [--dry-run] [--data=path/to/ministries.php]\n";
+    exit(0);
+}
+$dryRun   = isset($opts['dry-run']);
+$dataFile = is_string($opts['data'] ?? null) ? $opts['data'] : $root . '/database/seeds/npictt/ministries.php';
+
+if (!file_exists($root . '/storage/.installed')) {
+    fwrite(STDERR, "OwnPay is not installed yet. Run the installer first.\n");
+    exit(1);
+}
+if (!is_file($dataFile)) {
+    fwrite(STDERR, "Data file not found: {$dataFile}\n");
+    exit(1);
+}
+
+Dotenv\Dotenv::createImmutable($root)->safeLoad();
+$c = new OwnPay\Container();
+$c->instance(OwnPay\Container::class, $c);
+(require $root . '/config/services.php')($c);
+
+$db        = $c->get(OwnPay\Core\Database::class);
+$merchants = $c->get(OwnPay\Repository\MerchantRepository::class);
+$links     = $c->get(OwnPay\Service\Payment\PaymentLinkService::class);
+if (!$db instanceof OwnPay\Core\Database
+    || !$merchants instanceof OwnPay\Repository\MerchantRepository
+    || !$links instanceof OwnPay\Service\Payment\PaymentLinkService) {
+    fwrite(STDERR, "Failed to resolve OwnPay services.\n");
+    exit(1);
+}
+
+$data       = require $dataFile;
+$ministries = is_array($data) && is_array($data['ministries'] ?? null) ? $data['ministries'] : [];
+if ($ministries === []) {
+    fwrite(STDERR, "No ministries defined in {$dataFile}\n");
+    exit(1);
+}
+
+$defaults = [
+    'phone'         => null,
+    'description'   => null,
+    'primary_color' => '#0003B1',
+    'accent_color'  => '#E4002B',
+    'logo'          => '/assets/themes/npictt/logo.png',
+    'favicon'       => '/assets/themes/npictt/favicon-32.png',
+    'footer_text'   => null,
+    'status'        => 'active',
+];
+
+$errors = [];
+$seenSlugs = [];
+$seenEmails = [];
+foreach ($ministries as $i => $m) {
+    $label = is_array($m) ? (string) ($m['code'] ?? "#{$i}") : "#{$i}";
+    if (!is_array($m)) {
+        $errors[] = "{$label}: entry must be an array";
+        continue;
+    }
+    foreach (['code', 'slug', 'name', 'email'] as $req) {
+        if (!is_string($m[$req] ?? null) || trim($m[$req]) === '') {
+            $errors[] = "{$label}: missing '{$req}'";
+        }
+    }
+    $slug  = (string) ($m['slug'] ?? '');
+    $email = strtolower((string) ($m['email'] ?? ''));
+    if ($slug !== '' && !preg_match('/^[a-z0-9-]+$/', $slug)) {
+        $errors[] = "{$label}: slug must be lowercase letters, numbers and dashes";
+    }
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "{$label}: invalid email";
+    }
+    foreach (['primary_color', 'accent_color'] as $colorKey) {
+        if (isset($m[$colorKey]) && !preg_match('/^#[0-9a-fA-F]{6}$/', (string) $m[$colorKey])) {
+            $errors[] = "{$label}: {$colorKey} must be a #RRGGBB colour";
+        }
+    }
+    if (isset($seenSlugs[$slug])) {
+        $errors[] = "{$label}: duplicate slug '{$slug}'";
+    }
+    if (isset($seenEmails[$email])) {
+        $errors[] = "{$label}: duplicate email '{$email}'";
+    }
+    $seenSlugs[$slug] = true;
+    $seenEmails[$email] = true;
+
+    $existing = $slug !== '' ? $merchants->findBySlug($slug) : null;
+    if ($existing !== null && ((int) $existing['id'] === 1 || !empty($existing['is_platform']))) {
+        $errors[] = "{$label}: slug '{$slug}' belongs to a protected brand";
+    }
+    $emailOwner = $email !== '' ? $merchants->findByEmail($email) : null;
+    if ($emailOwner !== null && $emailOwner['slug'] !== $slug) {
+        $errors[] = "{$label}: email '{$email}' is already used by brand '{$emailOwner['slug']}'";
+    }
+}
+if ($errors !== []) {
+    fwrite(STDERR, "Validation failed:\n  - " . implode("\n  - ", $errors) . "\n");
+    exit(1);
+}
+
+echo ($dryRun ? "[dry-run] " : '') . 'Seeding ' . count($ministries) . " ministry brand(s) from {$dataFile}\n";
+
+$summary = $db->transaction(function () use ($ministries, $defaults, $merchants, $links, $db, $dryRun): array {
+    $rows = [];
+    foreach ($ministries as $m) {
+        $m = array_merge($defaults, $m);
+        $code = strtoupper((string) $m['code']);
+        $footer = $m['footer_text'] ?? ($m['name'] . ' - payments facilitated by NPICTT');
+
+        $existing = $merchants->findBySlug($m['slug']);
+        $existingSettings = [];
+        if ($existing !== null && is_string($existing['settings'] ?? null)) {
+            $decoded = json_decode($existing['settings'], true);
+            $existingSettings = is_array($decoded) ? $decoded : [];
+        }
+        $settings = array_merge([
+            'language'             => 'en',
+            'checkout_success_msg' => '',
+            'checkout_pending_msg' => '',
+            'checkout_failed_msg'  => '',
+            'custom_css'           => '',
+            'custom_js'            => '',
+            'show_powered_by'      => 0,
+        ], $existingSettings, [
+            'logo'          => $m['logo'],
+            'favicon'       => $m['favicon'],
+            'primary_color' => $m['primary_color'],
+            'accent_color'  => $m['accent_color'],
+            'support_email' => $m['email'],
+            'footer_text'   => $footer,
+        ]);
+
+        $fields = [
+            'name'             => $m['name'],
+            'email'            => strtolower($m['email']),
+            'phone'            => $m['phone'],
+            'timezone'         => 'America/Port_of_Spain',
+            'default_currency' => 'TTD',
+            'status'           => $m['status'],
+            'logo_path'        => $m['logo'],
+            'settings'         => json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        ];
+
+        $action = $existing === null ? 'create' : 'update';
+        $id = $existing !== null ? (int) $existing['id'] : 0;
+
+        if (!$dryRun) {
+            if ($existing === null) {
+                $id = (int) $merchants->createMerchant($fields + [
+                    'slug'        => $m['slug'],
+                    'color'       => $m['primary_color'],
+                    'initials'    => substr($code, 0, 5),
+                    'description' => $m['description'],
+                ]);
+            } else {
+                $merchants->updateBrand($id, $fields);
+                $db->execute(
+                    'UPDATE op_merchants SET color = :color, initials = :initials, description = :description WHERE id = :id',
+                    ['color' => $m['primary_color'], 'initials' => substr($code, 0, 5), 'description' => $m['description'], 'id' => $id]
+                );
+            }
+            $links->ensureDefault($id, $m['name'], $m['slug'], 'TTD');
+        }
+
+        $rows[] = [$action, $id, $code, $m['slug'], $m['name']];
+    }
+    return $rows;
+});
+
+foreach ($summary as [$action, $id, $code, $slug, $name]) {
+    $idLabel = $id > 0 ? "#{$id}" : 'new';
+    printf("  %-7s %-5s %-6s %-8s %s\n", $dryRun ? "would {$action}" : "{$action}d", $idLabel, $code, $slug, $name);
+}
+echo $dryRun ? "Dry run complete. No changes were written.\n" : "Done.\n";

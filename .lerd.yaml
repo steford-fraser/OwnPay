@@ -1,0 +1,45 @@
+domains:
+  - ownpay
+php_version: "8.3"
+framework: ownpay
+framework_def:
+  name: ownpay
+  label: OwnPay
+  color: '#0066ff'
+  php:
+    min: "8.3"
+    max: "8.5"
+  detect:
+    - composer: own-pay/ownpay
+  public_dir: public
+  env:
+    file: .env
+    example_file: .env.example
+    format: dotenv
+    url_key: APP_URL
+    services:
+      mysql:
+        detect:
+          - key: DB_NAME
+        vars:
+          - DB_HOST=lerd-mysql
+          - DB_PORT=3306
+          - DB_NAME={{site}}
+          - DB_USER=root
+          - DB_PASS=lerd
+      redis:
+        detect:
+          - key: REDIS_HOST
+        vars:
+          - REDIS_HOST=lerd-redis
+          - REDIS_PORT=6379
+          - 'REDIS_PREFIX=op:'
+  composer: auto
+  npm: auto
+  logs:
+    - path: storage/logs/*.log
+      format: raw
+secured: true
+services:
+  - mysql
+  - redis

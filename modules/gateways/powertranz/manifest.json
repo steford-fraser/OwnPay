@@ -1,0 +1,29 @@
+{
+  "name": "PowerTranz",
+  "slug": "powertranz",
+  "version": "1.0.0",
+  "description": "PowerTranz card payments (3-D Secure hosted payment page)",
+  "author": "NPICTT",
+  "type": "gateway",
+  "category": "global",
+  "icon": "assets/icon.svg",
+  "color": "#0B3D91",
+  "entrypoint": "PowerTranzGateway.php",
+  "namespace": "OwnPay\\Modules\\Gateways\\Powertranz",
+  "capabilities": ["gateway"],
+  "requires": {
+    "core": ">=0.1.0",
+    "php": ">=8.1"
+  },
+  "csp": {
+    "script_src": ["https://staging.ptranz.com", "https://gateway.ptranz.com"],
+    "style_src": ["https://staging.ptranz.com", "https://gateway.ptranz.com"],
+    "frame_src": ["https://staging.ptranz.com", "https://gateway.ptranz.com"],
+    "connect_src": ["https://staging.ptranz.com", "https://gateway.ptranz.com"]
+  },
+  "routes": [
+    ["GET", "/checkout/ptz/{trx}/start", "start"],
+    ["POST", "/checkout/ptz/{trx}/return", "merchantResponse"]
+  ],
+  "permissions": ["gateway.process"]
+}

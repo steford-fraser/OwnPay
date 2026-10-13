@@ -1,0 +1,35 @@
+{
+  "name": "NPICTT Theme",
+  "slug": "npictt",
+  "version": "1.0.0",
+  "description": "White-label theme for The National Payment and Innovation Company of Trinidad and Tobago (NPICTT). Brands the admin panel, sign-in pages and checkout using the Branding settings.",
+  "author": "NPICTT",
+  "type": "theme",
+  "entry": "Theme.php",
+  "namespace": "OwnPay\\Modules\\Themes\\Npictt",
+  "requires": {
+    "ownpay": ">=0.1.0"
+  },
+  "settings": {
+    "logo_url": "/assets/themes/npictt/logo.png",
+    "support_email": "",
+    "help_url": "https://npictt.co.tt/contact-us/",
+    "footer_text": "Secured by NPICTT · 256-bit encryption",
+    "show_dark_toggle": "enabled",
+    "show_security_badges": "enabled",
+    "timeout_enabled": "enabled",
+    "timeout_minutes": 10,
+    "express_checkout": "disabled",
+    "custom_css": "",
+    "custom_js": ""
+  },
+  "assets": {
+    "css": [
+      "checkout.css"
+    ],
+    "js": [
+      "op-fetch.js",
+      "checkout.js"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{% set np_primary = setting('theme.primary_color', '#0003B1') %}
+{% if not (np_primary matches '/^#[0-9a-fA-F]{6}$/') %}{% set np_primary = '#0003B1' %}{% endif %}
+{% set np_accent = setting('theme.accent_color', '#E4002B') %}
+{% if not (np_accent matches '/^#[0-9a-fA-F]{6}$/') %}{% set np_accent = '#E4002B' %}{% endif %}
+<link rel="icon" href="{{ (site_favicon is defined and site_favicon) ? site_favicon : '/assets/themes/npictt/favicon-32.png' }}" type="image/png">
+<link rel="apple-touch-icon" href="/assets/themes/npictt/apple-touch-icon.png">
+<style>
+    :root, [data-theme="dark"] {
+        --auth-primary: {{ np_primary }};
+        --auth-primary-hover: color-mix(in srgb, {{ np_primary }} 82%, #000);
+        --auth-blue: {{ np_primary }};
+        --auth-blue-hover: color-mix(in srgb, {{ np_primary }} 82%, #000);
+        --auth-navy: #002E5B;
+        --auth-navy-deep: #001A36;
+    }
+    .op-hero-static { color: {{ np_accent }}; }
+</style>

@@ -1,0 +1,44 @@
+{#
+  Payment-link layout, ministry + NPICTT co-branded.
+  Child templates only pass `link`, so the brand is resolved from link.merchant_id.
+#}
+{% set np_brand = brand ?? ((link.merchant_id ?? 0) ? npictt_brand(link.merchant_id) : {}) %}
+{% set np_is_placeholder = (np_brand.name ?? '') in ['', 'OwnPay', 'Own Pay'] %}
+{% set np_name = np_is_placeholder ? setting('branding.site_name', 'NPICTT Pay') : np_brand.name %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Checkout{% endblock %} — {{ np_name }}</title>
+    <link rel="icon" href="{{ (not np_is_placeholder and np_brand.favicon|default('')) ? np_brand.favicon : '/assets/themes/npictt/favicon-32.png' }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/tokens.css?v=014">
+    <link rel="stylesheet" href="/assets/css/reset.css?v=016">
+    <link rel="stylesheet" href="/assets/css/animations.css?v=014">
+    <link rel="stylesheet" href="/assets/css/utilities.css?v=014">
+    <link rel="stylesheet" href="/assets/css/payment-link.css?v=014">
+    {% include 'checkout/partials/_npictt_cobrand.twig' with {cb: np_brand, variant: 'styles'} only %}
+    <style>
+        body { background: linear-gradient(135deg, #080D1A 0%, color-mix(in srgb, var(--np-primary) 55%, #080D1A) 55%, #080D1A 100%); }
+        .payment-amount-card { margin-top: 0; max-width: none; border-top: 4px solid var(--np-primary); }
+        .payment-amount-input:focus { border-color: var(--np-primary); }
+        .payment-amount-submit { background: var(--np-primary); }
+        .payment-amount-submit:hover { background: var(--np-accent); }
+        .checkout-footer .np-strip { background: rgb(255 255 255 / 92%); margin-bottom: 10px; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="checkout-wrapper">
+        {% include 'checkout/partials/_npictt_cobrand.twig' with {cb: np_brand, variant: 'card'} only %}
+        {% block content %}{% endblock %}
+        <div class="checkout-footer">
+            {% include 'checkout/partials/_npictt_cobrand.twig' with {cb: np_brand, variant: 'strip'} only %}
+            <a href="/">Home</a>
+        </div>
+    </div>
+</body>
+</html>

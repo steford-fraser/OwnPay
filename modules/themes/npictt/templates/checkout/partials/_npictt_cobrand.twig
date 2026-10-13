@@ -1,0 +1,82 @@
+{#
+  Ministry + NPICTT co-brand building blocks for payer-facing pages.
+
+  Usage: {% include 'checkout/partials/_npictt_cobrand.twig' with {cb: brand, variant: 'panel'} only %}
+  variant: styles | panel (dark checkout sidebar) | mobile | card (light pages) | strip (footer)
+
+  A ministry lockup is only shown for a real brand with its own logo; the
+  core placeholder brand ('OwnPay') and the NPICTT brand itself fall back to
+  NPICTT-only branding.
+#}
+{% set cb = cb|default({}) %}
+{% set variant = variant|default('card') %}
+{% set npictt_logo = '/assets/themes/npictt/logo.png' %}
+{% set npictt_logo_dark = '/assets/themes/npictt/logo-dark.png' %}
+{% set npictt_url = 'https://npictt.co.tt/' %}
+{% set cb_name = cb.name ?? '' %}
+{% set cb_logo = cb.logo ?? '' %}
+{% set is_ministry = cb_name != '' and cb_name not in ['OwnPay', 'Own Pay'] and cb_logo != '' and cb_logo != npictt_logo %}
+{% set c1 = cb.color ?? '' %}
+{% if not (c1 matches '/^#[0-9a-fA-F]{6}$/') %}{% set c1 = '#0003B1' %}{% endif %}
+{% set c2 = cb.accent_color ?? '' %}
+{% if not (c2 matches '/^#[0-9a-fA-F]{6}$/') %}{% set c2 = c1 %}{% endif %}
+
+{% if variant == 'styles' %}
+<style>
+    :root { --np-primary: {{ c1 }}; --np-accent: {{ c2 }}; --np-navy: #0003B1; --np-red: #E4002B; }
+    .np-lockup { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
+    .np-lockup-logo-card { background: #fff; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgb(0 0 0 / 18%); }
+    .np-lockup-logo-card img { max-width: 100%; max-height: 64px; object-fit: contain; display: block; }
+    .np-partner { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+    .np-partner img { height: 34px; width: auto; display: block; }
+    .np-partner-dark { color: rgb(255 255 255 / 55%); }
+    .np-partner-light { color: #6B7280; }
+    .np-card { background: #fff; border-radius: 20px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 12px 32px rgb(0 0 0 / 5%), 0 0 0 1px rgb(0 0 0 / 3%); border-top: 4px solid var(--np-primary); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+    .np-card-logo { max-width: 100%; max-height: 72px; object-fit: contain; }
+    .np-card-npictt { max-height: 54px; width: auto; }
+    .np-card .np-partner { justify-content: center; }
+    .np-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: linear-gradient(90deg, rgb(0 3 177 / 6%), rgb(228 0 43 / 6%)); border-left: 3px solid var(--np-navy); border-right: 3px solid var(--np-red); font-size: 10.5px; color: #374151; }
+    .np-strip img { height: 22px; width: auto; }
+    .np-strip a { color: var(--np-navy); font-weight: 700; text-decoration: none; }
+    .np-mobile-logo { width: 24px; height: 24px; object-fit: contain; }
+    .ck-left { background: linear-gradient(160deg, #080D1A 0%, color-mix(in srgb, var(--np-primary) 45%, #080D1A) 60%, color-mix(in srgb, var(--np-primary) 70%, #1A2038) 100%); }
+</style>
+
+{% elseif variant == 'panel' %}
+<div class="np-lockup">
+    <div class="np-lockup-logo-card">
+        <img src="{{ is_ministry ? cb_logo : npictt_logo }}" alt="{{ is_ministry ? cb_name : 'NPICTT' }}">
+    </div>
+    {% if is_ministry %}
+        <div class="np-partner np-partner-dark">
+            <span>In partnership with</span>
+            <img src="{{ npictt_logo_dark }}" alt="NPICTT">
+        </div>
+    {% endif %}
+</div>
+
+{% elseif variant == 'mobile' %}
+<img src="{{ (is_ministry and (cb.favicon ?? '')) ? cb.favicon : '/assets/themes/npictt/favicon-32.png' }}" alt="" class="np-mobile-logo">
+
+{% elseif variant == 'card' %}
+<div class="np-card">
+    {% if is_ministry %}
+        <img src="{{ cb_logo }}" alt="{{ cb_name }}" class="np-card-logo">
+        <div class="np-partner np-partner-light">
+            <span>Payments facilitated by</span>
+            <img src="{{ npictt_logo }}" alt="NPICTT">
+        </div>
+    {% else %}
+        <img src="{{ npictt_logo }}" alt="NPICTT" class="np-card-npictt">
+    {% endif %}
+</div>
+
+{% elseif variant == 'strip' %}
+<div class="np-strip">
+    <img src="{{ npictt_logo }}" alt="NPICTT">
+    <span>
+        {% if is_ministry %}Payments for {{ cb_name }} are facilitated by{% else %}Secure government payments by{% endif %}
+        <a href="{{ npictt_url }}" target="_blank" rel="noopener">NPICTT</a>
+    </span>
+</div>
+{% endif %}
