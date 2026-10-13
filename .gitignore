@@ -89,3 +89,4 @@ phpunit_output.txt
 install.sh
 /update/
 .superpowers/
+.env.bak

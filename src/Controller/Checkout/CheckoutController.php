@@ -422,13 +422,16 @@ final class CheckoutController
         }
         
         $remaining = $timerSeconds;
-        $createdAtVal = $txn['created_at'] ?? '';
-        $createdAtStr = is_string($createdAtVal) ? $createdAtVal : '';
-        if ($createdAtStr !== '') {
-            $createdAt = strtotime($createdAtStr);
-            if ($createdAt !== false) {
-                $elapsed = time() - $createdAt;
-                $remaining = max(0, $timerSeconds - $elapsed);
+        $txnIdForTimer = $txn['id'] ?? 0;
+        if (is_numeric($txnIdForTimer) && (int) $txnIdForTimer > 0) {
+            // Elapsed time is measured in MySQL because created_at is written with NOW() in the DB
+            // session timezone, which can differ from PHP's configured timezone.
+            $elapsedVal = $this->txnRepo->getDatabase()->fetchColumn(
+                'SELECT TIMESTAMPDIFF(SECOND, created_at, NOW(6)) FROM op_transactions WHERE id = :id',
+                ['id' => (int) $txnIdForTimer]
+            );
+            if (is_numeric($elapsedVal)) {
+                $remaining = max(0, min($timerSeconds, $timerSeconds - (int) $elapsedVal));
             }
         }
 

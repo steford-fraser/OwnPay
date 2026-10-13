@@ -95,6 +95,21 @@ final class Theme implements PluginInterface
                 }
                 return $slug;
             }));
+            $twig->addFunction(new \Twig\TwigFunction('npictt_ministries', static function () use ($container): array {
+                $db = $container->has(\OwnPay\Core\Database::class) ? $container->get(\OwnPay\Core\Database::class) : null;
+                if (!$db instanceof \OwnPay\Core\Database) {
+                    return [];
+                }
+                // Brand 1 is NPICTT itself; only ministry brands are listed publicly.
+                return $db->fetchAll(
+                    "SELECT m.name, m.slug, m.logo_path, m.initials, m.description, pl.slug AS pay_slug
+                     FROM op_merchants m
+                     LEFT JOIN op_payment_links pl
+                       ON pl.merchant_id = m.id AND pl.slug = CONCAT(m.slug, '-pay') AND pl.status = 'active'
+                     WHERE m.status = 'active' AND m.is_platform = 0 AND m.id <> 1
+                     ORDER BY m.name"
+                );
+            }));
         } catch (\LogicException) {
             // Twig extensions already initialised; templates fall back to NPICTT-only branding.
         }

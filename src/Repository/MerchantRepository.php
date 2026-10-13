@@ -88,7 +88,7 @@ final class MerchantRepository extends BaseRepository
     public function listWithDomains(): array
     {
         return $this->db->fetchAll(
-            "SELECT m.id, m.name, m.slug, m.logo_path, m.status, m.created_at,
+            "SELECT m.id, m.name, m.slug, m.logo_path, m.status, m.default_currency, m.created_at,
                     d.domain as primary_domain
              FROM {$this->table} m
              LEFT JOIN op_domains d ON d.merchant_id = m.id AND d.is_primary = 1

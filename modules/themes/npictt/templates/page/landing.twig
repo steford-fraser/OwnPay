@@ -1,0 +1,417 @@
+{% set np_name = app_name ?? 'NPICTT Pay' %}
+{% set np_title = landing_title ?: 'Accelerating Digital Payments in Trinidad & Tobago' %}
+{% set np_subtitle = landing_subtitle ?: 'Secure digital payments for Trinidad and Tobago, powered by the National Payment and Innovation Company of Trinidad and Tobago (NPICTT).' %}
+{% set ministries = npictt_ministries() %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site_seo_title ?: (np_name ~ ' | Government Payments for Trinidad & Tobago') }}</title>
+    <meta name="description" content="{{ landing_description ?: np_subtitle }}">
+    <link rel="icon" href="{{ site_favicon ?: '/assets/themes/npictt/favicon-32.png' }}" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/themes/npictt/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --np-blue: #0003B1;
+            --np-blue-deep: #00027A;
+            --np-red: #E4002B;
+            --np-ink: #222222;
+            --np-text: #5f6470;
+            --np-muted: #8a8f99;
+            --np-line: #e6e8ee;
+            --np-soft: #f4f5f8;
+            --np-head: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --np-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { font-family: var(--np-body); color: var(--np-text); background: #fff; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+        a { color: inherit; text-decoration: none; }
+        img { max-width: 100%; display: block; }
+        .np-wrap { width: min(1200px, 100% - 48px); margin: 0 auto; }
+
+        /* Utility bar */
+        .np-topbar { background: var(--np-blue); color: #fff; font-size: 13px; }
+        .np-topbar .np-wrap { display: flex; justify-content: flex-end; align-items: center; gap: 28px; min-height: 40px; }
+        .np-topbar a:hover { text-decoration: underline; }
+
+        /* Header */
+        .np-header { background: #fff; border-bottom: 1px solid var(--np-line); position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 10px rgba(0, 3, 177, .04); }
+        .np-header .np-wrap { display: flex; align-items: center; justify-content: space-between; min-height: 104px; gap: 32px; }
+        .np-header-logo img { height: 78px; width: auto; }
+        .np-nav { display: flex; align-items: center; gap: 30px; }
+        .np-nav a { font-weight: 700; color: var(--np-blue); font-size: 15.5px; }
+        .np-nav a:hover { color: var(--np-red); }
+        .np-nav .np-nav-cta { background: var(--np-red); color: #fff; padding: 11px 22px; border-radius: 3px; }
+        .np-nav .np-nav-cta:hover { background: #c40025; color: #fff; }
+
+        /* Hero */
+        .np-hero { position: relative; overflow: hidden; background:
+            linear-gradient(180deg, rgba(255,255,255,.0), rgba(255,255,255,.0)),
+            repeating-linear-gradient(90deg, #f6f7fa 0 120px, #eef0f5 120px 122px),
+            #f6f7fa; }
+        .np-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,.92) 38%, rgba(255,255,255,0) 70%); pointer-events: none; }
+        .np-hero .np-wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; min-height: 520px; padding: 56px 0 64px; }
+        .np-hero-kicker { font-family: var(--np-head); color: var(--np-red); font-size: 26px; font-weight: 500; margin-bottom: 14px; }
+        .np-hero h1 { font-family: var(--np-head); color: var(--np-blue); font-weight: 700; font-size: 46px; line-height: 1.12; letter-spacing: -.5px; margin-bottom: 20px; }
+        .np-hero p { font-size: 17.5px; color: var(--np-text); max-width: 540px; margin-bottom: 30px; }
+        .np-hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+        .np-btn { display: inline-flex; align-items: center; gap: 10px; font-family: var(--np-head); font-weight: 600; font-size: 15px; padding: 14px 26px; border-radius: 3px; border: 2px solid transparent; transition: background .15s, color .15s, border-color .15s; }
+        .np-btn-blue { background: var(--np-blue); color: #fff; }
+        .np-btn-blue:hover { background: var(--np-blue-deep); }
+        .np-btn-ghost { border-color: var(--np-blue); color: var(--np-blue); background: #fff; }
+        .np-btn-ghost:hover { background: var(--np-blue); color: #fff; }
+        .np-hero-trust { display: flex; gap: 22px; margin-top: 30px; font-size: 13.5px; color: var(--np-muted); flex-wrap: wrap; }
+        .np-hero-trust span { display: inline-flex; align-items: center; gap: 7px; }
+        .np-hero-trust svg { color: var(--np-blue); }
+
+        /* Hero mosaic */
+        .np-mosaic { position: relative; height: 430px; }
+        .np-tile { position: absolute; border-radius: 6px; box-shadow: 0 18px 40px rgba(0, 3, 177, .12); }
+        .np-tile-red { background: linear-gradient(135deg, #ff1f45, var(--np-red) 60%, #b10021); }
+        .np-tile-blue { background: linear-gradient(135deg, #1b1fd1, var(--np-blue)); }
+        .np-tile-white { background: #fff; display: flex; align-items: center; justify-content: center; padding: 14px; }
+        .np-tile-white img { max-height: 100%; width: auto; object-fit: contain; }
+        .np-receipt { position: absolute; left: 22%; top: 14%; width: 300px; background: #fff; border-radius: 10px; box-shadow: 0 30px 60px rgba(0, 3, 177, .22); overflow: hidden; z-index: 3; }
+        .np-receipt-head { background: var(--np-blue); color: #fff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .np-receipt-head strong { font-family: var(--np-head); font-size: 14px; }
+        .np-receipt-head span { font-size: 11px; background: rgba(255,255,255,.18); padding: 3px 9px; border-radius: 20px; }
+        .np-receipt-body { padding: 20px; }
+        .np-receipt-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--np-muted); }
+        .np-receipt-service { font-family: var(--np-head); font-weight: 700; color: var(--np-ink); font-size: 16px; margin: 2px 0 14px; }
+        .np-receipt-amount { font-family: var(--np-head); font-weight: 800; color: var(--np-blue); font-size: 34px; letter-spacing: -.5px; }
+        .np-receipt-row { display: flex; justify-content: space-between; font-size: 12.5px; padding: 8px 0; border-top: 1px dashed var(--np-line); color: var(--np-text); }
+        .np-receipt-row:first-of-type { margin-top: 14px; }
+        .np-receipt-ok { display: flex; align-items: center; gap: 8px; margin-top: 14px; background: #e8f8ef; color: #12804a; font-weight: 700; font-size: 13px; padding: 10px 12px; border-radius: 6px; }
+
+        /* Red band */
+        .np-band { background: var(--np-red); color: #fff; position: relative; overflow: hidden; }
+        .np-band::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.35) 1.2px, transparent 1.4px); background-size: 26px 26px; opacity: .35; }
+        .np-band .np-wrap { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 84px; }
+        .np-band h2 { font-family: var(--np-body); font-weight: 700; font-size: 21px; }
+        .np-band a { border: 2px solid #fff; padding: 10px 26px; font-weight: 700; font-size: 14.5px; border-radius: 2px; white-space: nowrap; }
+        .np-band a:hover { background: #fff; color: var(--np-red); }
+
+        /* Sections */
+        .np-section { padding: 88px 0; }
+        .np-section-soft { background: var(--np-soft); }
+        .np-section-title { font-family: var(--np-head); font-weight: 400; color: var(--np-ink); font-size: 42px; text-align: center; margin-bottom: 12px; }
+        .np-section-sub { text-align: center; max-width: 680px; margin: 0 auto 54px; font-size: 16.5px; }
+        .np-rule { width: 46px; height: 3px; background: var(--np-red); margin: 0 auto 18px; }
+
+        /* Ministries */
+        .np-ministries { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
+        .np-ministry { background: #fff; border: 1px solid var(--np-line); border-top: 4px solid var(--np-blue); border-radius: 4px; padding: 30px 28px 26px; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
+        .np-ministry:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(0, 3, 177, .10); }
+        .np-ministry-logo { height: 84px; display: flex; align-items: center; margin-bottom: 22px; }
+        .np-ministry-logo img { max-height: 84px; max-width: 100%; width: auto; object-fit: contain; }
+        .np-ministry-initials { width: 64px; height: 64px; border-radius: 50%; background: var(--np-blue); color: #fff; font-family: var(--np-head); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .np-ministry h3 { font-family: var(--np-body); font-weight: 700; color: var(--np-ink); font-size: 20px; line-height: 1.3; margin-bottom: 8px; }
+        .np-ministry p { font-size: 14.5px; margin-bottom: 22px; flex: 1; }
+        .np-ministry-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--np-blue); font-size: 14.5px; background: #eef0fb; padding: 10px 18px; border-radius: 3px; }
+        .np-ministry-link:hover { background: var(--np-blue); color: #fff; }
+
+        /* Features */
+        .np-features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; }
+        .np-feature { background: #fff; padding: 30px 26px; border-radius: 4px; border: 1px solid var(--np-line); }
+        .np-feature-icon { width: 52px; height: 52px; border-radius: 4px; background: var(--np-red); color: #fff; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .np-feature:nth-child(even) .np-feature-icon { background: var(--np-blue); }
+        .np-feature h3 { font-family: var(--np-body); font-weight: 700; color: var(--np-ink); font-size: 19px; margin-bottom: 10px; }
+        .np-feature p { font-size: 14.5px; }
+
+        /* Steps */
+        .np-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; counter-reset: step; }
+        .np-step { position: relative; padding-top: 6px; }
+        .np-step-num { font-family: var(--np-head); font-weight: 800; font-size: 56px; color: var(--np-blue); line-height: 1; opacity: .15; margin-bottom: -18px; }
+        .np-step h3 { font-family: var(--np-body); font-weight: 700; color: var(--np-ink); font-size: 20px; margin-bottom: 8px; position: relative; }
+        .np-step h3::before { content: ''; display: block; width: 32px; height: 3px; background: var(--np-red); margin-bottom: 14px; }
+        .np-step p { font-size: 15px; }
+
+        /* Partners strip */
+        .np-partners { display: flex; align-items: center; justify-content: center; gap: 64px; flex-wrap: wrap; }
+        .np-partners img { height: 64px; width: auto; filter: grayscale(.15); opacity: .95; }
+
+        /* FAQ */
+        .np-faq { max-width: 820px; margin: 0 auto; }
+        .np-faq details { background: #fff; border: 1px solid var(--np-line); border-radius: 4px; margin-bottom: 12px; }
+        .np-faq summary { cursor: pointer; padding: 18px 22px; font-weight: 700; color: var(--np-ink); list-style: none; }
+        .np-faq summary::-webkit-details-marker { display: none; }
+        .np-faq details p { padding: 0 22px 20px; }
+
+        /* Footer */
+        .np-footer { background: var(--np-blue); color: rgba(255,255,255,.82); padding: 64px 0 0; font-size: 14.5px; }
+        .np-footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 48px; padding-bottom: 46px; }
+        .np-footer h4 { font-family: var(--np-head); color: #fff; font-size: 22px; font-weight: 600; margin-bottom: 18px; }
+        .np-footer-logo { background: #fff; display: inline-block; padding: 12px 16px; border-radius: 4px; margin-bottom: 18px; }
+        .np-footer-logo img { height: 54px; width: auto; }
+        .np-footer ul { list-style: none; }
+        .np-footer li { margin-bottom: 9px; }
+        .np-footer a:hover { color: #fff; text-decoration: underline; }
+        .np-footer-bottom { border-top: 1px solid rgba(255,255,255,.18); padding: 20px 0 26px; font-size: 13px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+        @media (max-width: 1024px) {
+            .np-hero .np-wrap { grid-template-columns: 1fr; }
+            .np-mosaic { height: 380px; }
+            .np-features { grid-template-columns: repeat(2, 1fr); }
+            .np-nav a:not(.np-nav-cta) { display: none; }
+        }
+        @media (max-width: 680px) {
+            .np-topbar .np-addr { display: none; }
+            .np-header .np-wrap { min-height: 80px; }
+            .np-header-logo img { height: 56px; }
+            .np-hero h1 { font-size: 34px; }
+            .np-hero-kicker { font-size: 20px; }
+            .np-mosaic { display: none; }
+            .np-band .np-wrap { flex-direction: column; align-items: flex-start; padding: 22px 0; }
+            .np-section { padding: 60px 0; }
+            .np-section-title { font-size: 32px; }
+            .np-features, .np-steps, .np-footer-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    {{ hook('landing.head')|raw }}
+</head>
+<body>
+    {{ hook('admin.landing.render')|raw }}
+
+    <div class="np-topbar">
+        <div class="np-wrap">
+            <span class="np-addr">15th Floor, Tower D International Waterfront Centre, 1 Wrightson Road, Port of Spain, Trinidad and Tobago</span>
+            <a href="tel:+18686273081">+1 868 627 3081</a>
+        </div>
+    </div>
+
+    <header class="np-header">
+        <div class="np-wrap">
+            <a href="/" class="np-header-logo" aria-label="{{ np_name }}">
+                <img src="/assets/themes/npictt/logo.png" alt="The National Payment &amp; Innovation Company of Trinidad &amp; Tobago">
+            </a>
+            <nav class="np-nav">
+                <a href="#ministries">Ministries</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#security">Security</a>
+                <a href="https://npictt.co.tt/" target="_blank" rel="external">About NPICTT</a>
+                <a href="https://npictt.co.tt/contact-us/" target="_blank" rel="external">Contact Us</a>
+                <a href="#ministries" class="np-nav-cta">Make a Payment</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="np-hero">
+        <div class="np-wrap">
+            <div>
+                <div class="np-hero-kicker">{{ np_name }}</div>
+                <h1>{{ np_title }}</h1>
+                <p>{{ np_subtitle }}</p>
+                <div class="np-hero-actions">
+                    <a href="#ministries" class="np-btn np-btn-blue">
+                        Pay a Ministry
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </a>
+                    <a href="#how-it-works" class="np-btn np-btn-ghost">How It Works</a>
+                </div>
+                <div class="np-hero-trust">
+                    <span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>256-bit encryption</span>
+                    <span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>3-D Secure card payments</span>
+                    <span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Instant digital receipts</span>
+                </div>
+            </div>
+
+            <div class="np-mosaic" aria-hidden="true">
+                <div class="np-tile np-tile-red" style="left:6%; top:2%; width:112px; height:112px;"></div>
+                <div class="np-tile np-tile-blue" style="right:4%; top:0; width:150px; height:96px;"></div>
+                <div class="np-tile np-tile-red" style="right:0; top:34%; width:190px; height:150px; opacity:.92;"></div>
+                <div class="np-tile np-tile-red" style="left:0; bottom:6%; width:150px; height:120px; opacity:.85;"></div>
+                <div class="np-tile np-tile-blue" style="left:34%; bottom:0; width:96px; height:96px; opacity:.9;"></div>
+                {% for m in ministries|slice(0, 3) %}
+                    {% set pos = [
+                        'left:-2%; top:34%; width:170px; height:92px;',
+                        'right:2%; bottom:4%; width:200px; height:92px;',
+                        'right:20%; top:-2%; width:150px; height:82px;'
+                    ][loop.index0] %}
+                    {% if m.logo_path %}
+                    <div class="np-tile np-tile-white" style="{{ pos }}"><img src="{{ m.logo_path }}" alt=""></div>
+                    {% endif %}
+                {% endfor %}
+                <div class="np-receipt">
+                    <div class="np-receipt-head">
+                        <strong>Payment Receipt</strong>
+                        <span>Verified</span>
+                    </div>
+                    <div class="np-receipt-body">
+                        <div class="np-receipt-label">Service</div>
+                        <div class="np-receipt-service">Driver's Permit Renewal</div>
+                        <div class="np-receipt-label">Amount Paid</div>
+                        <div class="np-receipt-amount">TT$300.00</div>
+                        <div class="np-receipt-row"><span>Paid to</span><strong>Ministry of Transport</strong></div>
+                        <div class="np-receipt-row"><span>Method</span><strong>VISA •••• 4242</strong></div>
+                        <div class="np-receipt-row"><span>Reference</span><strong>OP-7182D06BC5</strong></div>
+                        <div class="np-receipt-ok">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>
+                            Payment successful
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="np-band">
+        <div class="np-wrap">
+            <h2>The NPICTT is building a FinTech Enabled Ecosystem in T&amp;T</h2>
+            <a href="https://npictt.co.tt/" target="_blank" rel="external">Find out More</a>
+        </div>
+    </div>
+
+    <section class="np-section" id="ministries">
+        <div class="np-wrap">
+            <div class="np-rule"></div>
+            <h2 class="np-section-title">Pay a Ministry</h2>
+            <p class="np-section-sub">Select a participating Ministry to pay fees, permits and services online by credit or debit card. Each Ministry receives your payment directly, facilitated by NPICTT.</p>
+            <div class="np-ministries">
+                {% for m in ministries %}
+                <div class="np-ministry">
+                    <div class="np-ministry-logo">
+                        {% if m.logo_path %}
+                            <img src="{{ m.logo_path }}" alt="{{ m.name }}">
+                        {% else %}
+                            <div class="np-ministry-initials">{{ m.initials ?: m.name|slice(0, 2)|upper }}</div>
+                        {% endif %}
+                    </div>
+                    <h3>{{ m.name }}</h3>
+                    <p>{{ m.description ?: ('Pay ' ~ m.name ~ ' fees and services online.') }}</p>
+                    {% if m.pay_slug %}
+                    <a href="/pay/{{ m.pay_slug }}" class="np-ministry-link">
+                        Make a payment
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </a>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="np-section-sub">Ministry payment services are launching soon.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="np-section np-section-soft" id="security">
+        <div class="np-wrap">
+            <div class="np-rule"></div>
+            <h2 class="np-section-title">Acceleration of Digital Payments</h2>
+            <p class="np-section-sub">One secure national platform that lets citizens and businesses pay Government online, and gives every Ministry real-time visibility of its collections.</p>
+            <div class="np-features">
+                <div class="np-feature">
+                    <div class="np-feature-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                    <h3>Pay Anytime</h3>
+                    <p>Settle permits, licences and fees 24/7 from any phone or computer - no queues, no cash.</p>
+                </div>
+                <div class="np-feature">
+                    <div class="np-feature-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/></svg></div>
+                    <h3>Bank-Grade Security</h3>
+                    <p>Card payments are processed through a PCI DSS compliant gateway with 3-D Secure authentication.</p>
+                </div>
+                <div class="np-feature">
+                    <div class="np-feature-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+                    <h3>Instant Receipts</h3>
+                    <p>Every payment is confirmed immediately with a digital receipt and unique transaction reference.</p>
+                </div>
+                <div class="np-feature">
+                    <div class="np-feature-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg></div>
+                    <h3>Built for Ministries</h3>
+                    <p>Each Ministry has its own branded payment pages, staff access, invoices and live reporting.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="np-section" id="how-it-works">
+        <div class="np-wrap">
+            <div class="np-rule"></div>
+            <h2 class="np-section-title">How It Works</h2>
+            <p class="np-section-sub">Paying Government online takes less than two minutes.</p>
+            <div class="np-steps">
+                <div class="np-step">
+                    <div class="np-step-num">01</div>
+                    <h3>Choose a Ministry and service</h3>
+                    <p>Select the Ministry and the fee you need to pay, or open the payment link or invoice sent to you.</p>
+                </div>
+                <div class="np-step">
+                    <div class="np-step-num">02</div>
+                    <h3>Enter your details</h3>
+                    <p>Provide the reference details the Ministry needs, such as a permit, vehicle or candidate number.</p>
+                </div>
+                <div class="np-step">
+                    <div class="np-step-num">03</div>
+                    <h3>Pay securely and get a receipt</h3>
+                    <p>Pay by Visa or Mastercard and receive an instant confirmation the Ministry can verify.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% if ministries|length > 0 %}
+    <section class="np-section np-section-soft">
+        <div class="np-wrap">
+            <h2 class="np-section-title" style="margin-bottom: 44px;">Our Partners</h2>
+            <div class="np-partners">
+                {% for m in ministries %}
+                    {% if m.logo_path %}<img src="{{ m.logo_path }}" alt="{{ m.name }}">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if faqs|length > 0 %}
+    <section class="np-section" id="faq">
+        <div class="np-wrap">
+            <div class="np-rule"></div>
+            <h2 class="np-section-title" style="margin-bottom: 44px;">Frequently Asked Questions</h2>
+            <div class="np-faq">
+                {% for faq in faqs %}
+                <details name="faq-accordion">
+                    <summary>{{ faq.question }}</summary>
+                    <p>{{ faq.answer }}</p>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <footer class="np-footer">
+        <div class="np-wrap">
+            <div class="np-footer-grid">
+                <div>
+                    <div class="np-footer-logo"><img src="/assets/themes/npictt/logo.png" alt="NPICTT"></div>
+                    <p>The National Payment and Innovation Company of Trinidad and Tobago is accelerating digital payments and financial inclusion across Trinidad and Tobago.</p>
+                </div>
+                <div>
+                    <h4>Payments</h4>
+                    <ul>
+                        {% for m in ministries %}
+                            {% if m.pay_slug %}<li><a href="/pay/{{ m.pay_slug }}">{{ m.name }}</a></li>{% endif %}
+                        {% endfor %}
+                        <li><a href="/login">Ministry staff sign in</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Contact</h4>
+                    <ul>
+                        <li>15th Floor, Tower D, International Waterfront Centre, 1 Wrightson Road, Port of Spain</li>
+                        <li><a href="tel:+18686273081">+1 868 627 3081</a></li>
+                        <li><a href="https://npictt.co.tt/" target="_blank" rel="external">npictt.co.tt</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="np-footer-bottom">
+                <span>&copy; {{ "now"|date("Y") }} The National Payment and Innovation Company of Trinidad and Tobago (NPICTT). All Rights Reserved.</span>
+                <span>256-bit encryption &middot; PCI DSS compliant processing</span>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

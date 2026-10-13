@@ -1,0 +1,382 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+/**
+ * Seeds demo data for NPICTT proposal screenshots.
+ *
+ * Usage: php bin/npictt-demo-seed [--purge]
+ *
+ * Creates a screenshot super-admin, a MOWI "Finance Officer" staff user, payment
+ * links, customers, invoices, payment intents, transactions, refunds and ledger
+ * entries for the NPICTT ministry brands (run `php bin/npictt-seed` first).
+ * Everything created is recorded in storage/npictt-demo-state.json; re-running
+ * purges the previous demo data first, and --purge only removes it.
+ */
+
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "This script must be run from the command line.\n");
+    exit(1);
+}
+
+$root = dirname(__DIR__);
+chdir($root);
+require $root . '/vendor/autoload.php';
+
+$opts = getopt('', ['purge', 'help']);
+if (isset($opts['help'])) {
+    echo "Usage: php bin/npictt-demo-seed [--purge]\n";
+    exit(0);
+}
+
+Dotenv\Dotenv::createImmutable($root)->safeLoad();
+$c = new OwnPay\Container();
+$c->instance(OwnPay\Container::class, $c);
+(require $root . '/config/services.php')($c);
+
+$db        = $c->get(OwnPay\Core\Database::class);
+$merchants = $c->get(OwnPay\Repository\MerchantRepository::class);
+$users     = $c->get(OwnPay\Repository\MerchantUserRepository::class);
+$customers = $c->get(OwnPay\Service\Customer\CustomerPiiService::class);
+$links     = $c->get(OwnPay\Service\Payment\PaymentLinkService::class);
+$invoices  = $c->get(OwnPay\Service\Payment\InvoiceService::class);
+$txns      = $c->get(OwnPay\Repository\TransactionRepository::class);
+$ledger    = $c->get(OwnPay\Service\Payment\LedgerService::class);
+
+$stateFile = $root . '/storage/npictt-demo-state.json';
+
+$purge = static function () use ($db, $stateFile): void {
+    if (!is_file($stateFile)) {
+        echo "No previous demo data recorded.\n";
+        return;
+    }
+    $state = json_decode((string) file_get_contents($stateFile), true);
+    $state = is_array($state) ? $state : [];
+    $ids = static fn(string $key): array => array_map('intval', $state[$key] ?? []);
+    $in = static fn(array $list): string => implode(',', $list === [] ? [0] : $list);
+
+    $db->transaction(function () use ($db, $ids, $in): void {
+        $txnIds = $ids('transactions');
+        $ledgerTxnIds = array_map('intval', array_column($db->fetchAll(
+            "SELECT id FROM op_ledger_transactions WHERE (reference_type = 'transaction' AND reference_id IN ({$in($txnIds)}))
+             OR (reference_type = 'refund' AND reference_id IN ({$in($ids('refunds'))}))"
+        ), 'id'));
+        if ($ledgerTxnIds !== []) {
+            $entries = $db->fetchAll(
+                "SELECT account_id, type, amount FROM op_ledger_entries WHERE ledger_transaction_id IN ({$in($ledgerTxnIds)})"
+            );
+            foreach ($entries as $e) {
+                $account = $db->fetchOne('SELECT type FROM op_ledger_accounts WHERE id = :id', ['id' => $e['account_id']]);
+                $normalDebit = in_array($account['type'] ?? '', ['asset', 'expense'], true);
+                $increase = ($e['type'] === 'debit') === $normalDebit;
+                $db->execute(
+                    'UPDATE op_ledger_accounts SET balance = balance ' . ($increase ? '-' : '+') . ' :amt WHERE id = :id',
+                    ['amt' => $e['amount'], 'id' => $e['account_id']]
+                );
+            }
+            $db->execute("DELETE FROM op_ledger_transactions WHERE id IN ({$in($ledgerTxnIds)})");
+        }
+        $db->execute("DELETE FROM op_refunds WHERE id IN ({$in($ids('refunds'))})");
+        $db->execute("DELETE FROM op_transactions WHERE id IN ({$in($txnIds)})");
+        $db->execute("DELETE FROM op_payment_intents WHERE id IN ({$in($ids('intents'))})");
+        $db->execute("DELETE FROM op_invoices WHERE id IN ({$in($ids('invoices'))})");
+        $db->execute("DELETE FROM op_payment_links WHERE id IN ({$in($ids('links'))})");
+        $db->execute("DELETE FROM op_customers WHERE id IN ({$in($ids('customers'))})");
+        $db->execute("DELETE FROM op_merchant_users WHERE id IN ({$in($ids('users'))})");
+        $db->execute("DELETE FROM op_roles WHERE id IN ({$in($ids('roles'))})");
+    });
+    unlink($stateFile);
+    echo "Purged previous demo data.\n";
+};
+
+$purge();
+if (isset($opts['purge'])) {
+    exit(0);
+}
+
+$state = ['users' => [], 'roles' => [], 'customers' => [], 'links' => [], 'invoices' => [],
+          'intents' => [], 'transactions' => [], 'refunds' => []];
+
+$ministries = [
+    'mowi' => [
+        'links' => [
+            ['title' => 'Road Opening Permit', 'amount' => '500.00', 'description' => 'Application fee for a permit to excavate or open a public roadway for utility or construction works.', 'fields' => ['Site Address', 'Contractor / Company Name']],
+            ['title' => 'Driveway Access Permit', 'amount' => '250.00', 'description' => 'Permit fee for constructing or modifying a driveway connection to a main road.', 'fields' => ['Property Address']],
+            ['title' => 'Heavy Equipment Movement Permit', 'amount' => '750.00', 'description' => 'Permit for moving oversized or heavy equipment on public roads.', 'fields' => ['Vehicle Registration No.', 'Route']],
+        ],
+        'invoice_items' => [
+            ['Road reinstatement inspection', 1, '1200.00'],
+            ['Traffic management plan review', 1, '850.00'],
+            ['Bridge load assessment report', 1, '2500.00'],
+        ],
+        'refs' => 'MOWI',
+    ],
+    'motca' => [
+        'links' => [
+            ['title' => "Driver's Permit Renewal", 'amount' => '300.00', 'description' => "Renewal of a Trinidad and Tobago driver's permit (5 years).", 'fields' => ["Driver's Permit No."]],
+            ['title' => 'Motor Vehicle Inspection Fee', 'amount' => '100.00', 'description' => 'Fee for a scheduled motor vehicle inspection at a Licensing Office.', 'fields' => ['Vehicle Registration No.']],
+            ['title' => 'Certified Copy of Vehicle Record', 'amount' => '50.00', 'description' => 'Certified copy of a motor vehicle registration record.', 'fields' => ['Vehicle Registration No.']],
+            ['title' => 'Learner Driver Permit', 'amount' => '120.00', 'description' => 'Application fee for a provisional learner driver permit.', 'fields' => ['National ID No.']],
+        ],
+        'invoice_items' => [
+            ['Fleet vehicle inspections (10 units)', 10, '100.00'],
+            ['Commercial transport licence', 1, '1500.00'],
+            ['Taxi route licence renewal', 1, '400.00'],
+        ],
+        'refs' => 'MOTCA',
+    ],
+    'moe' => [
+        'links' => [
+            ['title' => 'CSEC / CAPE Private Candidate Exam Fees', 'amount' => null, 'description' => 'Examination fees for private candidates sitting CXC CSEC or CAPE subjects.', 'fields' => ['Candidate Number', 'Number of Subjects']],
+            ['title' => 'Official Transcript Request', 'amount' => '25.00', 'description' => 'Request an official academic transcript from the Ministry of Education.', 'fields' => ['Student ID', 'School Name']],
+            ['title' => 'Certificate Replacement', 'amount' => '75.00', 'description' => 'Replacement of a lost or damaged examination certificate.', 'fields' => ['Candidate Number', 'Year of Examination']],
+        ],
+        'invoice_items' => [
+            ['School facility rental - auditorium', 1, '1800.00'],
+            ['Teacher professional development workshop seats', 12, '150.00'],
+            ['Curriculum materials order', 25, '60.00'],
+        ],
+        'refs' => 'MOE',
+    ],
+];
+
+$people = [
+    ['Kavita Ramdass', 'kavita.ramdass@gmail.com', '+1 868 721 4410'],
+    ['Marcus Charles', 'marcus.charles@outlook.com', '+1 868 684 2291'],
+    ['Aaliyah Mohammed', 'aaliyah.mohammed@yahoo.com', '+1 868 755 0182'],
+    ['Darren Ali', 'darren.ali@gmail.com', '+1 868 299 8733'],
+    ['Shanice Joseph', 'shanice.joseph@gmail.com', '+1 868 470 1156'],
+    ['Ravi Maharaj', 'ravi.maharaj@tstt.net.tt', '+1 868 680 3348'],
+    ['Keisha Baptiste', 'keisha.baptiste@gmail.com', '+1 868 765 9021'],
+    ['Jason Ramsaran', 'jason.ramsaran@outlook.com', '+1 868 391 7724'],
+    ['Nadia Khan', 'nadia.khan@gmail.com', '+1 868 488 6610'],
+    ['Andre Phillip', 'andre.phillip@yahoo.com', '+1 868 703 2245'],
+    ['Simone Gopaul', 'simone.gopaul@gmail.com', '+1 868 627 5583'],
+    ['Kerwin Thomas', 'kerwin.thomas@gmail.com', '+1 868 494 3019'],
+    ['Priya Persad', 'priya.persad@outlook.com', '+1 868 778 4462'],
+    ['Jelani Alexander', 'jelani.alexander@gmail.com', '+1 868 315 9087'],
+    ['Renee Lezama', 'renee.lezama@yahoo.com', '+1 868 682 1170'],
+    ['Anil Seepersad', 'anil.seepersad@gmail.com', '+1 868 736 5528'],
+    ['Tricia Clarke', 'tricia.clarke@gmail.com', '+1 868 460 8814'],
+    ['Rondell Williams', 'rondell.williams@outlook.com', '+1 868 299 4376'],
+];
+
+mt_srand(20261013);
+$pick = static fn(array $list) => $list[mt_rand(0, count($list) - 1)];
+$cards = ['VISA •••• 4242', 'VISA •••• 1881', 'Mastercard •••• 5454', 'Mastercard •••• 0019', 'VISA •••• 7730', 'Mastercard •••• 3321'];
+
+$adminPassword = 'Npictt-' . bin2hex(random_bytes(4));
+$staffPassword = 'Mowi-' . bin2hex(random_bytes(4));
+
+$db->transaction(function () use (
+    $db, $merchants, $users, $customers, $links, $invoices, $txns, $ledger,
+    $ministries, $people, $pick, $cards, $adminPassword, $staffPassword, &$state
+): void {
+    $platformOwner = $db->fetchOne("SELECT id FROM op_merchants WHERE slug = 'npictt' LIMIT 1");
+    $ownerRole = $db->fetchOne("SELECT id FROM op_roles WHERE merchant_id = :mid AND slug = 'owner' LIMIT 1", ['mid' => $platformOwner['id'] ?? 0]);
+    if ($platformOwner === null || $ownerRole === null) {
+        throw new RuntimeException('NPICTT platform brand or owner role not found.');
+    }
+
+    $adminId = (int) $users->createStaff(
+        (int) $platformOwner['id'], 'NPICTT Administrator', 'proposal-admin@npictt.gov.tt',
+        password_hash($adminPassword, PASSWORD_ARGON2ID), (int) $ownerRole['id']
+    );
+    $db->execute('UPDATE op_merchant_users SET is_superadmin = 1 WHERE id = :id', ['id' => $adminId]);
+    $state['users'][] = $adminId;
+
+    foreach ($ministries as $slug => $cfg) {
+        $brand = $merchants->findBySlug($slug);
+        if ($brand === null) {
+            throw new RuntimeException("Ministry brand '{$slug}' not found. Run php bin/npictt-seed first.");
+        }
+        $mid = (int) $brand['id'];
+
+        if ($slug === 'mowi') {
+            $roleId = (int) $db->insert(
+                "INSERT INTO op_roles (merchant_id, name, slug, description, is_system) VALUES (:mid, 'Finance Officer', 'finance-officer', 'Ministry finance staff: payments, invoices, payment links and reports', 0)",
+                ['mid' => $mid]
+            );
+            $state['roles'][] = $roleId;
+            $db->execute("INSERT IGNORE INTO op_permissions (slug, name, group_name) VALUES ('dashboard.view', 'View Dashboard', 'dashboard')");
+            $perms = ['admin.access', 'dashboard.view', 'transactions.view', 'invoices.view', 'invoices.manage',
+                'payment_links.view', 'payment_links.manage', 'customers.view', 'customers.manage', 'system.reports'];
+            foreach ($perms as $p) {
+                $db->execute(
+                    'INSERT INTO op_role_permissions (role_id, permission_id) SELECT :rid, id FROM op_permissions WHERE slug = :s',
+                    ['rid' => $roleId, 's' => $p]
+                );
+            }
+            $staffId = (int) $users->createStaff($mid, 'Alicia Rampersad', 'finance@mowi.gov.tt',
+                password_hash($staffPassword, PASSWORD_ARGON2ID), $roleId, null, '+1 868 625 1225');
+            $state['users'][] = $staffId;
+        }
+
+        $custIds = [];
+        $shuffled = $people;
+        shuffle($shuffled);
+        foreach (array_slice($shuffled, 0, 15) as $i => [$name, $email, $phone]) {
+            $cust = $customers->create($mid, ['name' => $name, 'email' => $email, 'phone' => $phone]);
+            $cid = (int) $cust['id'];
+            $db->execute(
+                'UPDATE op_customers SET created_at = DATE_SUB(NOW(6), INTERVAL :d DAY) WHERE id = :id',
+                ['d' => mt_rand(2, 85), 'id' => $cid]
+            );
+            $custIds[] = ['id' => $cid, 'name' => $name, 'email' => $email];
+            $state['customers'][] = $cid;
+        }
+
+        $linkRows = [];
+        foreach ($cfg['links'] as $l) {
+            $data = ['title' => $l['title'], 'description' => $l['description'], 'currency' => 'TTD'];
+            if ($l['amount'] !== null) {
+                $data['amount'] = $l['amount'];
+                $data['is_amount_fixed'] = 1;
+            } else {
+                $data['min_amount'] = '100.00';
+                $data['max_amount'] = '5000.00';
+            }
+            $link = $links->create($mid, $data);
+            $lid = (int) $link['id'];
+            $state['links'][] = $lid;
+            foreach ($l['fields'] as $sort => $label) {
+                $db->insert(
+                    "INSERT INTO op_payment_link_fields (payment_link_id, label, type, is_required, sort_order) VALUES (:lid, :label, 'text', 1, :s)",
+                    ['lid' => $lid, 'label' => $label, 's' => $sort]
+                );
+            }
+            $db->execute('UPDATE op_payment_links SET created_at = DATE_SUB(NOW(6), INTERVAL :d DAY) WHERE id = :id',
+                ['d' => mt_rand(90, 150), 'id' => $lid]);
+            $linkRows[] = ['id' => $lid, 'title' => $l['title'], 'amount' => $l['amount']];
+        }
+
+        $invoiceStatuses = ['paid', 'paid', 'sent', 'overdue', 'sent'];
+        foreach ($invoiceStatuses as $n => $status) {
+            [$desc, $qty, $price] = $cfg['invoice_items'][$n % count($cfg['invoice_items'])];
+            $cust = $custIds[$n];
+            $createdDaysAgo = [40, 25, 9, 45, 3][$n];
+            $dueOffset = $status === 'overdue' ? -15 : ($status === 'paid' ? -10 : 14);
+            $inv = $invoices->create($mid, [
+                'invoice_number' => sprintf('%s-INV-%04d', $cfg['refs'], 1041 + $n),
+                'customer_id'    => $cust['id'],
+                'currency'       => 'TTD',
+                'due_date'       => date('Y-m-d', strtotime("{$dueOffset} days")),
+                'notes'          => 'Payment can be made online by card using the secure link on this invoice.',
+                'items'          => [['description' => $desc, 'quantity' => $qty, 'unit_price' => $price]],
+            ]);
+            $invId = (int) $inv['id'];
+            $state['invoices'][] = $invId;
+            $db->execute(
+                "UPDATE op_invoices SET status = :st, created_at = DATE_SUB(NOW(6), INTERVAL :d DAY),
+                 paid_at = IF(:st2 = 'paid', DATE_SUB(NOW(6), INTERVAL :d2 DAY), NULL) WHERE id = :id",
+                ['st' => $status, 'st2' => $status, 'd' => $createdDaysAgo, 'd2' => max(1, $createdDaysAgo - 3), 'id' => $invId]
+            );
+            if ($status === 'paid') {
+                $txId = (int) $txns->forTenant($mid)->createTransaction([
+                    'merchant_id' => $mid, 'customer_id' => $cust['id'], 'gateway_slug' => 'powertranz',
+                    'amount' => $inv['total'], 'fee' => '0.00', 'currency' => 'TTD',
+                    'sender_account' => $pick($cards), 'reference' => $inv['invoice_number'],
+                    'gateway_trx_id' => bin2hex(random_bytes(8)), 'ip_address' => '190.213.' . mt_rand(1, 254) . '.' . mt_rand(1, 254),
+                    'method' => 'invoice', 'status' => 'completed',
+                    'metadata' => json_encode(['invoice_id' => $invId]),
+                ]);
+                $minutesAgo = max(1, $createdDaysAgo - 3) * 1440;
+                $db->execute('UPDATE op_transactions SET created_at = DATE_SUB(NOW(6), INTERVAL :m MINUTE), completed_at = DATE_SUB(NOW(6), INTERVAL :m2 MINUTE) WHERE id = :id',
+                    ['m' => $minutesAgo, 'm2' => $minutesAgo - 2, 'id' => $txId]);
+                $ledger->recordPaymentReceived($mid, $txId, (string) $inv['total'], '0.00', 'TTD');
+                $state['transactions'][] = $txId;
+            }
+        }
+
+        // Transactions: dense over the last 30 days, sparser back to ~6 months for the annual chart.
+        $plan = [];
+        for ($i = 0; $i < 70; $i++) {
+            $plan[] = mt_rand(0, 30 * 1440);
+        }
+        for ($i = 0; $i < 6; $i++) {
+            $plan[] = mt_rand(0, 600);
+        }
+        for ($i = 0; $i < 3; $i++) {
+            $plan[] = mt_rand(1, 12);
+        }
+        for ($i = 0; $i < 60; $i++) {
+            $plan[] = mt_rand(31 * 1440, 180 * 1440);
+        }
+        foreach ($plan as $minutesAgo) {
+            $link = $pick($linkRows);
+            $cust = $pick($custIds);
+            $amount = $link['amount'] ?? number_format(mt_rand(2, 12) * 85, 2, '.', '');
+            $roll = mt_rand(1, 100);
+            $status = $roll <= 82 ? 'completed' : ($roll <= 89 ? 'failed' : ($roll <= 95 ? 'pending' : 'refunded'));
+            if ($minutesAgo > 30 * 1440 && $status === 'pending') {
+                $status = 'completed';
+            }
+            $meta = ['payment_link_id' => $link['id']];
+            if ($status === 'failed') {
+                $meta['failure_reason'] = $pick(['Card declined by issuer', 'Insufficient funds', '3-D Secure authentication failed']);
+            }
+            $txId = (int) $txns->forTenant($mid)->createTransaction([
+                'merchant_id' => $mid, 'customer_id' => $cust['id'], 'gateway_slug' => 'powertranz',
+                'amount' => $amount, 'fee' => '0.00', 'currency' => 'TTD',
+                'sender_account' => $pick($cards), 'reference' => $link['title'],
+                'gateway_trx_id' => bin2hex(random_bytes(8)), 'ip_address' => '190.213.' . mt_rand(1, 254) . '.' . mt_rand(1, 254),
+                'method' => 'link', 'status' => $status,
+                'metadata' => json_encode($meta),
+            ]);
+            $done = in_array($status, ['completed', 'refunded'], true);
+            $db->execute(
+                'UPDATE op_transactions SET created_at = DATE_SUB(NOW(6), INTERVAL :m MINUTE), completed_at = ' . ($done ? 'DATE_SUB(NOW(6), INTERVAL :m2 MINUTE)' : 'NULL') . ' WHERE id = :id',
+                $done ? ['m' => $minutesAgo, 'm2' => max(0, $minutesAgo - 1), 'id' => $txId] : ['m' => $minutesAgo, 'id' => $txId]
+            );
+            $state['transactions'][] = $txId;
+            if ($done) {
+                $ledger->recordPaymentReceived($mid, $txId, (string) $amount, '0.00', 'TTD');
+            }
+            if ($status === 'refunded') {
+                $refundId = (int) $db->insert(
+                    "INSERT INTO op_refunds (merchant_id, transaction_id, uuid, amount, reason, status, processed_at, created_at)
+                     VALUES (:mid, :tid, :uuid, :amt, :reason, 'completed', DATE_SUB(NOW(6), INTERVAL :m MINUTE), DATE_SUB(NOW(6), INTERVAL :m2 MINUTE))",
+                    ['mid' => $mid, 'tid' => $txId, 'uuid' => Ramsey\Uuid\Uuid::uuid4()->toString(), 'amt' => $amount,
+                     'reason' => $pick(['Duplicate payment', 'Application withdrawn by applicant', 'Service not rendered']),
+                     'm' => max(0, $minutesAgo - 1440), 'm2' => max(0, $minutesAgo - 1400)]
+                );
+                $ledger->recordRefund($mid, $refundId, $txId, (string) $amount, 'TTD');
+                $state['refunds'][] = $refundId;
+            }
+        }
+
+        for ($i = 0; $i < 5; $i++) {
+            $link = $pick($linkRows);
+            $cust = $pick($custIds);
+            $minutesAgo = mt_rand(5, 2880);
+            $state['intents'][] = (int) $db->insert(
+                "INSERT INTO op_payment_intents (merchant_id, uuid, token, customer_id, amount, currency, description, status, expires_at, created_at)
+                 VALUES (:mid, :uuid, :token, :cid, :amt, 'TTD', :desc, :st, DATE_ADD(NOW(6), INTERVAL 1 DAY), DATE_SUB(NOW(6), INTERVAL :m MINUTE))",
+                ['mid' => $mid, 'uuid' => Ramsey\Uuid\Uuid::uuid4()->toString(), 'token' => bin2hex(random_bytes(24)),
+                 'cid' => $cust['id'], 'amt' => $link['amount'] ?? '425.00', 'desc' => $link['title'],
+                 'st' => $pick(['completed', 'completed', 'completed', 'pending', 'processing']), 'm' => $minutesAgo]
+            );
+        }
+    }
+
+    // Ledger journal dates follow the transactions they reference.
+    $db->execute(
+        "UPDATE op_ledger_transactions lt JOIN op_transactions t ON lt.reference_type = 'transaction' AND lt.reference_id = t.id
+         SET lt.created_at = COALESCE(t.completed_at, t.created_at)"
+    );
+    $db->execute(
+        "UPDATE op_ledger_transactions lt JOIN op_refunds r ON lt.reference_type = 'refund' AND lt.reference_id = r.id
+         SET lt.created_at = COALESCE(r.processed_at, r.created_at)"
+    );
+    $db->execute(
+        "UPDATE op_ledger_entries le JOIN op_ledger_transactions lt ON lt.id = le.ledger_transaction_id SET le.created_at = lt.created_at"
+    );
+});
+
+file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT));
+
+printf("Seeded %d transactions, %d invoices, %d payment links, %d customers.\n",
+    count($state['transactions']), count($state['invoices']), count($state['links']), count($state['customers']));
+echo "\nSuper-admin:  proposal-admin@npictt.gov.tt / {$adminPassword}\n";
+echo "MOWI staff:   finance@mowi.gov.tt / {$staffPassword}\n";
+echo "\nRemove with: php bin/npictt-demo-seed --purge\n";

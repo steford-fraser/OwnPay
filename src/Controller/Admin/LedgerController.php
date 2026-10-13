@@ -69,11 +69,11 @@ final class LedgerController
 
         $ledger = [];
         $balance = '0.00';
+        $currency = 'USD';
         if ($ledgerService instanceof \OwnPay\Service\Payment\LedgerService) {
             $ledger = $ledgerService->entries($isGlobal ? null : $mid, $page, 50);
 
             $db = $this->c->get(\OwnPay\Core\Database::class);
-            $currency = 'USD';
             if ($db instanceof \OwnPay\Core\Database) {
                 $merchant = $db->fetchOne("SELECT default_currency FROM op_merchants WHERE id = :id LIMIT 1", ['id' => $mid]);
                 if (is_array($merchant)) {
@@ -88,6 +88,7 @@ final class LedgerController
             'active_page'     => 'ledger',
             'ledger'          => $ledger,
             'current_balance' => $balance,
+            'balance_currency' => $currency,
         ]);
     }
 }
