@@ -104,14 +104,38 @@ final class Theme implements PluginInterface
                     return [];
                 }
                 // Brand 1 is NPICTT itself; only ministry brands are listed publicly.
-                return $db->fetchAll(
-                    "SELECT m.name, m.slug, m.logo_path, m.initials, m.description, pl.slug AS pay_slug
+                $ministries = $db->fetchAll(
+                    "SELECT m.id, m.name, m.slug, m.logo_path, m.initials, m.description, pl.slug AS pay_slug
                      FROM op_merchants m
                      LEFT JOIN op_payment_links pl
                        ON pl.merchant_id = m.id AND pl.slug = CONCAT(m.slug, '-pay') AND pl.status = 'active'
                      WHERE m.status = 'active' AND m.is_platform = 0 AND m.id <> 1
                      ORDER BY m.name"
                 );
+                if ($ministries === []) {
+                    return [];
+                }
+
+                $ids = implode(',', array_map(static fn(array $m): int => (int) $m['id'], $ministries));
+                $links = $db->fetchAll(
+                    "SELECT pl.merchant_id, pl.slug, pl.title, pl.amount, pl.currency, pl.is_amount_fixed
+                     FROM op_payment_links pl
+                     JOIN op_merchants m ON m.id = pl.merchant_id
+                     WHERE pl.merchant_id IN ({$ids}) AND pl.status = 'active'
+                       AND pl.slug <> CONCAT(m.slug, '-pay')
+                       AND (pl.expires_at IS NULL OR pl.expires_at > NOW(6))
+                       AND (pl.max_uses IS NULL OR pl.use_count < pl.max_uses)
+                     ORDER BY pl.id"
+                );
+                $byMerchant = [];
+                foreach ($links as $link) {
+                    $byMerchant[(int) $link['merchant_id']][] = $link;
+                }
+                foreach ($ministries as &$m) {
+                    $m['links'] = array_slice($byMerchant[(int) $m['id']] ?? [], 0, 3);
+                }
+                unset($m);
+                return $ministries;
             }));
         } catch (\LogicException) {
             // Twig extensions already initialised; templates fall back to NPICTT-only branding.

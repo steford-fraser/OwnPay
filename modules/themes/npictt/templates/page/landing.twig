@@ -114,6 +114,12 @@
         .np-ministry p { font-size: 14.5px; margin-bottom: 22px; flex: 1; }
         .np-ministry-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--np-blue); font-size: 14.5px; background: #eef0fb; padding: 10px 18px; border-radius: 3px; }
         .np-ministry-link:hover { background: var(--np-blue); color: #fff; }
+        .np-ministry-services { list-style: none; border-top: 1px solid var(--np-line); }
+        .np-ministry-services a { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--np-line); font-size: 14.5px; color: var(--np-ink); transition: color .15s, padding .15s; }
+        .np-ministry-services a:hover { color: var(--np-blue); padding-left: 6px; }
+        .np-ministry-services svg { color: var(--np-red); flex: none; }
+        .np-service-title { flex: 1; font-weight: 600; line-height: 1.35; }
+        .np-service-amount { font-family: var(--np-head); font-weight: 700; color: var(--np-blue); white-space: nowrap; font-size: 14px; }
 
         /* Features */
         .np-features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; }
@@ -283,7 +289,21 @@
                     </div>
                     <h3>{{ m.name }}</h3>
                     <p>{{ m.description ?: ('Pay ' ~ m.name ~ ' fees and services online.') }}</p>
-                    {% if m.pay_slug %}
+                    {% if m.links is not empty %}
+                    <ul class="np-ministry-services">
+                        {% for l in m.links %}
+                        <li>
+                            <a href="/pay/{{ l.slug }}">
+                                <span class="np-service-title">{{ l.title }}</span>
+                                <span class="np-service-amount">
+                                    {% if l.is_amount_fixed and l.amount is not null %}{{ l.currency == 'TTD' ? 'TT$' : (l.currency ~ ' ') }}{{ l.amount|number_format(2) }}{% else %}Enter amount{% endif %}
+                                </span>
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% elseif m.pay_slug %}
                     <a href="/pay/{{ m.pay_slug }}" class="np-ministry-link">
                         Make a payment
                         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
