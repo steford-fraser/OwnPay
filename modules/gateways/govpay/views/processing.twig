@@ -1,0 +1,24 @@
+{% extends '@gateway_govpay/_layout.twig' %}
+
+{% block title %}Processing payment{% endblock %}
+
+{% block content %}
+    <div class="gp-center">
+        <div class="gp-spinner"></div>
+        <h1>Authorising your payment</h1>
+        <p class="gp-ref">{{ card.brand }} ending in {{ card.last4 }}</p>
+        <p class="gp-ref">You will be returned to {{ merchant.name }} automatically.</p>
+        <form method="post" action="{{ base }}/return" id="gp-return">
+            <input type="hidden" name="outcome" value="{{ outcome }}">
+            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="signature" value="{{ signature }}">
+            <noscript><button type="submit" class="gp-btn">Continue</button></noscript>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    setTimeout(function () { document.getElementById('gp-return').submit(); }, {{ delay * 1000 }});
+</script>
+{% endblock %}

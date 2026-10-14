@@ -1,0 +1,35 @@
+{
+  "name": "GovPay",
+  "slug": "govpay",
+  "version": "1.0.0",
+  "description": "GovPay - the Government of Trinidad and Tobago's payment platform (demo): card, GovPay Wallet, and cash voucher, SMS or QR codes.",
+  "author": "NPICTT",
+  "type": "gateway",
+  "category": "global",
+  "icon": "assets/icon.png",
+  "color": "#0F172B",
+  "entrypoint": "GovPayGateway.php",
+  "namespace": "OwnPay\\Modules\\Gateways\\Govpay",
+  "capabilities": ["gateway"],
+  "requires": {
+    "core": ">=0.1.0",
+    "php": ">=8.1"
+  },
+  "routes": [
+    ["GET", "/checkout/govpay/{trx}/page", "page"],
+    ["POST", "/checkout/govpay/{trx}/identify", "identify"],
+    ["POST", "/checkout/govpay/{trx}/signup", "signup"],
+    ["POST", "/checkout/govpay/{trx}/verify", "verifyCode"],
+    ["POST", "/checkout/govpay/{trx}/identify/reset", "identifyReset"],
+    ["POST", "/checkout/govpay/{trx}/card", "card"],
+    ["GET", "/checkout/govpay/{trx}/3ds", "threeDs"],
+    ["POST", "/checkout/govpay/{trx}/3ds", "threeDs"],
+    ["POST", "/checkout/govpay/{trx}/return", "merchantResponse"],
+    ["POST", "/checkout/govpay/{trx}/wallet", "wallet"],
+    ["POST", "/checkout/govpay/{trx}/code/apply", "codeApply"],
+    ["POST", "/checkout/govpay/{trx}/code/remove", "codeRemove"],
+    ["POST", "/checkout/govpay/{trx}/code/confirm", "codeConfirm"],
+    ["GET", "/checkout/govpay/{trx}/cancel", "cancel"]
+  ],
+  "permissions": ["gateway.process"]
+}

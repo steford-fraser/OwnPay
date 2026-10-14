@@ -1,0 +1,191 @@
+{% extends '@gateway_govpay/_layout.twig' %}
+
+{% block styles %}
+        .gp-who { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--gp-muted); margin-bottom: 14px; }
+        .gp-who strong { color: var(--gp-navy); }
+        .gp-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--gp-line); margin-bottom: 18px; overflow-x: auto; }
+        .gp-tab { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--gp-muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+        .gp-tab.gp-on { color: var(--gp-navy); border-bottom-color: var(--gp-red); }
+        .gp-wallet { border: 1px solid var(--gp-line); border-radius: 12px; padding: 18px; margin-bottom: 16px; background: linear-gradient(135deg, #0F172B, #1e2a4a); color: #fff; }
+        .gp-wallet .gp-label { color: #cbd5e1; }
+        .gp-wallet .gp-bal { font-size: 28px; font-weight: 800; margin: 6px 0 2px; }
+        .gp-wallet .gp-holder { font-size: 13px; color: #cbd5e1; }
+        .gp-after { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0 14px; color: var(--gp-muted); }
+        .gp-list { list-style: none; margin: 0 0 12px; padding: 0; }
+        .gp-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--gp-line); border-radius: 10px; margin-bottom: 8px; }
+        .gp-code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
+        .gp-chan { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; background: #eef2ff; color: var(--gp-navy); margin-left: 6px; }
+        .gp-sub { font-size: 12px; color: var(--gp-muted); }
+        .gp-intro { margin: 0 0 14px; }
+        .gp-remove { background: none; border: 0; color: #b91c1c; font-size: 13px; cursor: pointer; }
+        .gp-due { display: flex; justify-content: space-between; font-weight: 700; padding: 10px 0; }
+        .gp-due.gp-zero { color: var(--gp-ok); }
+        .gp-apply { display: flex; gap: 8px; margin: 6px 0 8px; }
+        .gp-apply input { flex: 1; min-width: 0; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; text-transform: uppercase; font-family: ui-monospace, Menlo, monospace; }
+        .gp-scan { display: none; margin: 0 0 14px; font-size: 13px; }
+        .gp-scan label { color: var(--gp-navy); font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .gp-scan input { display: none; }
+        .gp-hint { margin-top: 16px; font-size: 12px; color: var(--gp-muted); border-top: 1px dashed var(--gp-line); padding-top: 12px; line-height: 1.6; }
+        .gp-brands { display: flex; gap: 6px; margin-bottom: 14px; font-size: 11px; font-weight: 700; color: var(--gp-muted); }
+        .gp-brands span { border: 1px solid var(--gp-line); border-radius: 4px; padding: 3px 7px; }
+{% endblock %}
+
+{% block content %}
+    {% if identify is defined %}
+        {% set ci = identify %}
+        {% set ci_method = method %}
+        <p class="gp-sub gp-intro">Sign in to GovPay to pay {{ merchant.name }}.</p>
+        {% include 'checkout/partials/_customer_identify.twig' %}
+        <a class="gp-cancel" href="{{ base }}/cancel">Cancel and choose another payment method</a>
+    {% else %}
+        <div class="gp-who"><span>Signed in to GovPay as <strong>{{ signed_in }}</strong></span></div>
+
+        <nav class="gp-tabs" aria-label="Payment method">
+            {% for key, title in methods %}
+                <a class="gp-tab{{ key == method ? ' gp-on' : '' }}" href="{{ base }}/page?method={{ key }}"{% if key == method %} aria-current="page"{% endif %}>{{ title }}</a>
+            {% endfor %}
+        </nav>
+
+        {% if message or error %}<div class="gp-msg{{ (is_error or error) ? ' gp-err' : '' }}" role="status">{{ error ?: message }}</div>{% endif %}
+
+        {% if method == 'card' %}
+            <div class="gp-brands"><span>VISA</span><span>Mastercard</span></div>
+            <form method="post" action="{{ base }}/card" id="gp-card" autocomplete="off" novalidate>
+                <input type="hidden" name="token" value="{{ token }}">
+                <div class="gp-field">
+                    <label for="cardholder">Name on card</label>
+                    <input id="cardholder" name="cardholder" value="{{ name }}" autocomplete="cc-name" required>
+                </div>
+                <div class="gp-field">
+                    <label for="card_number">Card number</label>
+                    <input id="card_number" name="card_number" inputmode="numeric" placeholder="1234 1234 1234 1234" maxlength="23" autocomplete="cc-number" required>
+                </div>
+                <div class="gp-row">
+                    <div class="gp-field">
+                        <label for="expiry">Expiry (MM/YY)</label>
+                        <input id="expiry" name="expiry" inputmode="numeric" placeholder="12/30" maxlength="5" autocomplete="cc-exp" required>
+                    </div>
+                    <div class="gp-field">
+                        <label for="cvc">Security code</label>
+                        <input id="cvc" name="cvc" inputmode="numeric" placeholder="123" maxlength="4" autocomplete="cc-csc" required>
+                    </div>
+                </div>
+                <button type="submit" class="gp-btn">Pay {{ currency }} {{ amount|number_format(2) }}</button>
+            </form>
+
+        {% elseif method == 'wallet' %}
+            {% if wallet %}
+                <div class="gp-wallet">
+                    <div class="gp-label">GovPay Wallet balance</div>
+                    <div class="gp-bal">{{ wallet.currency }} {{ wallet.balance|number_format(2) }}</div>
+                    <div class="gp-holder">{{ wallet.holder }}</div>
+                </div>
+                <div class="gp-after">
+                    <span>Balance after payment</span>
+                    <strong>{{ wallet.currency }} {{ (wallet.balance - amount)|number_format(2) }}</strong>
+                </div>
+                <form method="post" action="{{ base }}/wallet" class="gp-submit">
+                    <input type="hidden" name="token" value="{{ token }}">
+                    <button type="submit" class="gp-btn"{{ wallet_ok ? '' : ' disabled' }}>Pay {{ currency }} {{ amount|number_format(2) }} from wallet</button>
+                </form>
+                {% if not wallet_ok %}<p class="gp-sub">Top up your wallet with a GovPay voucher at any authorised agent, or pay by card.</p>{% endif %}
+            {% endif %}
+
+        {% elseif method == 'code' %}
+            {% if applied is not empty %}
+            <ul class="gp-list">
+                {% for a in applied %}
+                <li>
+                    <div>
+                        <div><span class="gp-code">{{ a.code }}</span><span class="gp-chan">{{ a.channel == 'qr' ? 'QR' : (a.channel == 'sms' ? 'SMS' : 'Voucher') }}</span></div>
+                        <div class="gp-sub">Balance {{ currency }} {{ a.balance|number_format(2) }} &middot; {{ currency }} {{ (a.balance - a.amount)|number_format(2) }} left after payment</div>
+                    </div>
+                    <div>
+                        <strong>- {{ currency }} {{ a.amount|number_format(2) }}</strong>
+                        <form method="post" action="{{ base }}/code/remove">
+                            <input type="hidden" name="token" value="{{ token }}">
+                            <input type="hidden" name="code" value="{{ a.code }}">
+                            <button type="submit" class="gp-remove">Remove</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <div class="gp-due{{ remaining == '0.00' ? ' gp-zero' : '' }}">
+                <span>{{ remaining == '0.00' ? 'Fully covered' : 'Still due' }}</span>
+                <span>{{ currency }} {{ remaining|number_format(2) }}</span>
+            </div>
+
+            {% if remaining != '0.00' and can_add %}
+            <form method="post" action="{{ base }}/code/apply" class="gp-apply" id="gp-apply" autocomplete="off">
+                <input type="hidden" name="token" value="{{ token }}">
+                <input name="code" id="gp-code" placeholder="Voucher, SMS or QR code" aria-label="Voucher, SMS or QR code" required autofocus>
+                <button type="submit" class="gp-btn gp-btn-alt">Apply</button>
+            </form>
+            <div class="gp-scan" id="gp-scan">
+                <label for="gp-qr">&#128247; Scan a QR code</label>
+                <input type="file" id="gp-qr" accept="image/*" capture="environment">
+                <span class="gp-sub" id="gp-scan-msg"></span>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{{ base }}/code/confirm" class="gp-submit">
+                <input type="hidden" name="token" value="{{ token }}">
+                <button type="submit" class="gp-btn"{{ remaining != '0.00' or applied is empty ? ' disabled' : '' }}>Pay {{ currency }} {{ amount|number_format(2) }}</button>
+            </form>
+            <div class="gp-hint">
+                Buy GovPay vouchers with cash at NLCB outlets and other authorised agents, use a code sent to you by SMS,
+                or scan a GovPay QR code. If a code's balance is lower than the amount due, its full balance is used and you can add another for the rest.
+            </div>
+        {% endif %}
+
+        <a class="gp-cancel" href="{{ base }}/cancel">Cancel and choose another payment method</a>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    (function () {
+        var number = document.getElementById('card_number');
+        if (number) {
+            var expiry = document.getElementById('expiry');
+            var cvc = document.getElementById('cvc');
+            number.addEventListener('input', function () { number.value = number.value.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim(); });
+            expiry.addEventListener('input', function () {
+                var d = expiry.value.replace(/\D/g, '').slice(0, 4);
+                expiry.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+            });
+            cvc.addEventListener('input', function () { cvc.value = cvc.value.replace(/\D/g, '').slice(0, 4); });
+        }
+
+        document.querySelectorAll('#gp-card, .gp-submit').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                var btn = form.querySelector('button[type=submit]');
+                btn.disabled = true;
+                btn.textContent = 'Processing...';
+            });
+        });
+
+        var scan = document.getElementById('gp-scan');
+        if (scan && 'BarcodeDetector' in window) {
+            scan.style.display = 'block';
+            var file = document.getElementById('gp-qr');
+            var msg = document.getElementById('gp-scan-msg');
+            file.addEventListener('change', function () {
+                if (!file.files || !file.files[0]) { return; }
+                msg.textContent = ' Reading QR code...';
+                createImageBitmap(file.files[0])
+                    .then(function (img) { return new window.BarcodeDetector({ formats: ['qr_code'] }).detect(img); })
+                    .then(function (codes) {
+                        if (!codes.length) { msg.textContent = ' No QR code found - type the code instead.'; return; }
+                        document.getElementById('gp-code').value = codes[0].rawValue;
+                        document.getElementById('gp-apply').submit();
+                    })
+                    .catch(function () { msg.textContent = ' Could not read the QR code - type the code instead.'; });
+            });
+        }
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends '@gateway_courtpay/_layout.twig' %}
+
+{% block title %}Processing payment{% endblock %}
+
+{% block content %}
+    <div class="cp-center">
+        <div class="cp-spinner"></div>
+        <h1>Authorising your payment</h1>
+        <p class="cp-ref">{{ card.brand }} ending in {{ card.last4 }}</p>
+        <p class="cp-ref">You will be returned to {{ merchant.name }} automatically.</p>
+        <form method="post" action="{{ base }}/return" id="cp-return">
+            <input type="hidden" name="outcome" value="{{ outcome }}">
+            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="signature" value="{{ signature }}">
+            <noscript><button type="submit" class="cp-btn">Continue</button></noscript>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    setTimeout(function () { document.getElementById('cp-return').submit(); }, {{ delay * 1000 }});
+</script>
+{% endblock %}

@@ -3,14 +3,15 @@
 declare(strict_types=1);
 
 /**
- * Makes the DemoPay and VoucherPay demo gateways the only active gateways on every brand.
+ * Makes the demo gateways (NPICTT Card, NPICTT Voucher, GovPay, CourtPay) the only active
+ * gateways on every brand.
  *
  * Usage: php bin/demo-gateways-assign [--dry-run] [--revert]
  *
- * For each row in op_merchants: activates both plugins for the brand, stores their encrypted
+ * For each row in op_merchants: activates every demo plugin for the brand, stores their encrypted
  * credentials (existing values are kept), and deactivates every other active API gateway,
  * recording it in storage/demo-gateways-replaced.json. --revert restores the recorded
- * gateways and deactivates both demo gateways. Voucher data is never touched.
+ * gateways and deactivates the demo gateways. Voucher, code and wallet data is never touched.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -25,6 +26,7 @@ require_once $root . '/modules/gateways/npictt-voucher/VoucherBalanceChanged.php
 require_once $root . '/modules/gateways/npictt-voucher/VoucherStore.php';
 
 use OwnPay\Core\Database;
+use OwnPay\Gateway\Demo\PrepaidCodeStore;
 use OwnPay\Modules\Gateways\Voucherpay\VoucherStore;
 use OwnPay\Plugin\PluginManager;
 use OwnPay\Repository\GatewayConfigRepository;
@@ -39,7 +41,7 @@ if (isset($opts['help'])) {
 $dryRun = isset($opts['dry-run']);
 $revert = isset($opts['revert']);
 $recordFile = $root . '/storage/demo-gateways-replaced.json';
-$demoSlugs = ['npictt-card', 'npictt-voucher'];
+$demoSlugs = ['npictt-card', 'npictt-voucher', 'govpay', 'courtpay'];
 
 if (!file_exists($root . '/storage/.installed')) {
     fwrite(STDERR, "OwnPay is not installed yet. Run the installer first.\n");
@@ -83,16 +85,37 @@ $brandConfig = static function (int $mid, string $slug) use ($db): ?array {
  * @return array<string, string>
  */
 $defaultsFor = static function (string $slug): array {
-    return $slug === 'npictt-card'
-        ? [
+    return match ($slug) {
+        'npictt-card' => [
             'demo_enabled'     => 'yes',
             'publishable_key'  => 'pk_live_' . bin2hex(random_bytes(12)),
             'secret_key'       => 'sk_live_' . bin2hex(random_bytes(24)),
             'checkout_label'   => 'Credit/Debit Card',
             'three_ds'         => 'test_cards',
             'processing_delay' => '2',
-        ]
-        : ['checkout_label' => 'Prepaid Voucher'];
+        ],
+        'govpay' => [
+            'merchant_code'          => 'GOV-' . strtoupper(bin2hex(random_bytes(3))),
+            'api_key'                => 'gp_live_' . bin2hex(random_bytes(24)),
+            'checkout_label'         => 'GovPay',
+            'method_card'            => 'yes',
+            'method_wallet'          => 'yes',
+            'method_code'            => 'yes',
+            'wallet_opening_balance' => '1000.00',
+            'three_ds'               => 'test_cards',
+            'processing_delay'       => '2',
+        ],
+        'courtpay' => [
+            'merchant_code'    => 'CP-' . strtoupper(bin2hex(random_bytes(3))),
+            'api_key'          => 'cp_live_' . bin2hex(random_bytes(24)),
+            'checkout_label'   => 'CourtPay',
+            'method_card'      => 'yes',
+            'method_voucher'   => 'yes',
+            'three_ds'         => 'test_cards',
+            'processing_delay' => '2',
+        ],
+        default => ['checkout_label' => 'Prepaid Voucher'],
+    };
 };
 
 $fail = static function (string $message): never {
@@ -125,9 +148,11 @@ if ($revert) {
     exit(0);
 }
 
-echo ($dryRun ? '[dry-run] ' : '') . "Assigning DemoPay + VoucherPay to " . count($merchants) . " brand(s)\n";
+echo ($dryRun ? '[dry-run] ' : '') . "Assigning " . implode(', ', $demoSlugs) . " to " . count($merchants) . " brand(s)\n";
 if (!$dryRun) {
     (new VoucherStore($db))->ensureSchema();
+    PrepaidCodeStore::ensureSchema($db, $root . '/modules/gateways/govpay/schema.sql');
+    PrepaidCodeStore::ensureSchema($db, $root . '/modules/gateways/courtpay/schema.sql');
 }
 foreach ($merchants as $m) {
     $mid = (int) $m['id'];
@@ -192,11 +217,11 @@ foreach ($merchants as $m) {
         )));
     }
 
-    printf("  #%-3d %-14s demopay + voucherpay active; replaced: %s\n", $mid, $m['slug'], $others === [] ? '-' : implode(', ', $others));
+    printf("  #%-3d %-14s demo gateways active; replaced: %s\n", $mid, $m['slug'], $others === [] ? '-' : implode(', ', $others));
 }
 
 if (!$dryRun) {
     file_put_contents($recordFile, json_encode($record, JSON_PRETTY_PRINT) . "\n");
     echo "Recorded replaced gateways in storage/demo-gateways-replaced.json\n";
 }
-echo $dryRun ? "Dry run complete. No changes were written.\n" : "Done. Seed vouchers with: php bin/voucherpay-seed\n";
+echo $dryRun ? "Dry run complete. No changes were written.\n" : "Done. Seed vouchers with: php bin/voucherpay-seed && php bin/govpay-seed\n";

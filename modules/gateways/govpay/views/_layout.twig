@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}GovPay{% endblock %} - Government of Trinidad and Tobago</title>
+    <link rel="icon" href="{{ brand.arms }}">
+    <style>
+        :root { --gp-navy: #0F172B; --gp-red: #DC1E37; --gp-ink: #0f172a; --gp-muted: #64748b; --gp-line: #e2e8f0; --gp-ok: #047857; --gp-merchant: {{ merchant.color }}; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f5f8; color: var(--gp-ink); }
+        .gp-top { background: #fff; border-bottom: 4px solid var(--gp-red); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .gp-brand { display: flex; align-items: center; gap: 12px; }
+        .gp-brand .gp-arms { height: 44px; width: auto; }
+        .gp-brand .gp-mytt { height: 26px; width: auto; }
+        .gp-brand .gp-name { padding-left: 12px; border-left: 1px solid var(--gp-line); line-height: 1.15; }
+        .gp-brand .gp-name strong { display: block; font-size: 18px; color: var(--gp-navy); letter-spacing: -.01em; }
+        .gp-brand .gp-name span { font-size: 11px; color: var(--gp-muted); text-transform: uppercase; letter-spacing: .08em; }
+        .gp-secure { font-size: 12px; color: var(--gp-muted); text-align: right; }
+        .gp-flagbar { height: 4px; background: linear-gradient(90deg, var(--gp-red) 0 40%, #fff 40% 44%, #000 44% 56%, #fff 56% 60%, var(--gp-red) 60%); }
+        @media (max-width: 600px) { .gp-brand .gp-name, .gp-secure { display: none; } }
+        .gp-wrap { max-width: 940px; margin: 28px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1.35fr; gap: 22px; }
+        .gp-card { background: #fff; border: 1px solid var(--gp-line); border-radius: 14px; padding: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        .gp-merchant { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--gp-line); }
+        .gp-merchant img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; border: 1px solid var(--gp-line); background: #fff; }
+        .gp-merchant-dot { width: 44px; height: 44px; border-radius: 8px; background: var(--gp-merchant); }
+        .gp-label { font-size: 12px; color: var(--gp-muted); text-transform: uppercase; letter-spacing: .06em; }
+        .gp-amount { font-size: 32px; font-weight: 800; margin: 18px 0 4px; color: var(--gp-navy); }
+        .gp-ref { font-size: 13px; color: var(--gp-muted); overflow-wrap: anywhere; }
+        .gp-timer { margin-top: 18px; font-size: 13px; color: var(--gp-muted); }
+        .gp-help { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--gp-line); font-size: 12px; color: var(--gp-muted); line-height: 1.6; }
+        .gp-help strong { color: var(--gp-navy); }
+        h1 { font-size: 20px; margin: 0 0 16px; color: var(--gp-navy); }
+        .gp-field { margin-bottom: 14px; }
+        .gp-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .gp-field input { width: 100%; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-family: inherit; }
+        .gp-field input:focus { border-color: var(--gp-navy); box-shadow: 0 0 0 3px rgba(15,23,43,.12); }
+        .gp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .gp-btn { width: 100%; padding: 13px; font-size: 16px; font-weight: 700; color: #fff; background: var(--gp-red); border: 0; border-radius: 8px; cursor: pointer; }
+        .gp-btn:hover { filter: brightness(1.06); }
+        .gp-btn[disabled] { opacity: .45; cursor: not-allowed; }
+        .gp-btn-alt { background: var(--gp-navy); width: auto; padding: 12px 16px; font-size: 15px; }
+        .gp-cancel { display: block; text-align: center; margin-top: 14px; font-size: 14px; color: var(--gp-muted); }
+        .gp-msg { border-radius: 8px; padding: 10px 12px; font-size: 14px; margin: 0 0 14px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .gp-msg.gp-err { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .gp-center { text-align: center; }
+        .gp-spinner { width: 44px; height: 44px; margin: 10px auto 18px; border: 4px solid #fde2e6; border-top-color: var(--gp-red); border-radius: 50%; animation: gp-spin .8s linear infinite; }
+        @keyframes gp-spin { to { transform: rotate(360deg); } }
+        .gp-main .ci-btn { background: var(--gp-red); }
+        .gp-main .ci-link { color: var(--gp-navy); }
+        .gp-main .ci-field input:focus { border-color: var(--gp-navy); box-shadow: 0 0 0 3px rgba(15,23,43,.12); }
+        .gp-main .ci-title { color: var(--gp-navy); }
+        {% block styles %}{% endblock %}
+        @media (max-width: 780px) { .gp-wrap { grid-template-columns: 1fr; margin: 16px auto; } }
+    </style>
+</head>
+<body>
+    <header class="gp-top">
+        <div class="gp-brand">
+            {% if brand.arms %}<img class="gp-arms" src="{{ brand.arms }}" alt="Coat of arms of Trinidad and Tobago">{% endif %}
+            {% if brand.logo %}<img class="gp-mytt" src="{{ brand.logo }}" alt="MyTT">{% endif %}
+            <div class="gp-name"><strong>GovPay</strong><span>Government of Trinidad and Tobago</span></div>
+        </div>
+        <div class="gp-secure">&#128274; Secure government payment<br>{{ brand.support }}</div>
+    </header>
+    <div class="gp-flagbar" aria-hidden="true"></div>
+    <div class="gp-wrap">
+        <aside class="gp-card">
+            <div class="gp-merchant">
+                {% if merchant.logo %}<img src="{{ merchant.logo }}" alt="">{% else %}<span class="gp-merchant-dot"></span>{% endif %}
+                <div>
+                    <div class="gp-label">Paying</div>
+                    <strong>{{ merchant.name }}</strong>
+                </div>
+            </div>
+            <div class="gp-amount">{{ currency }} {{ amount|number_format(2) }}</div>
+            <div class="gp-ref">GovPay reference {{ trx }}</div>
+            <div class="gp-timer">Session expires in <span id="gp-timer" data-seconds="{{ expires_in }}">{{ (expires_in // 60) }} min</span></div>
+            <div class="gp-help">
+                Need help? Call <strong>{{ brand.support }}</strong>, toll-free, 24/7.<br>
+                GovPay is operated by NPICTT on behalf of the Government of Trinidad and Tobago.
+            </div>
+        </aside>
+        <main class="gp-card gp-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script nonce="{{ nonce }}">
+        (function () {
+            var el = document.getElementById('gp-timer');
+            if (!el) { return; }
+            var left = parseInt(el.getAttribute('data-seconds'), 10) || 0;
+            function tick() {
+                var m = Math.floor(left / 60), s = left % 60;
+                el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                if (left > 0) { left--; setTimeout(tick, 1000); }
+            }
+            tick();
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

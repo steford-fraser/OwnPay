@@ -6,6 +6,7 @@ namespace OwnPay\Modules\Gateways\Demopay;
 use OwnPay\Container;
 use OwnPay\Core\Database;
 use OwnPay\Event\EventManager;
+use OwnPay\Gateway\Demo\DemoCard;
 use OwnPay\Gateway\GatewayAdapterInterface;
 use OwnPay\Gateway\GatewayDefaults;
 use OwnPay\Http\Request;
@@ -40,25 +41,13 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
     private const PATH = '/checkout/card/';
     private const DEFAULT_LABEL = 'Credit/Debit Card';
     private const SESSION_TTL = 900;
-    private const OTP = '123456';
+    private const OTP = DemoCard::OTP;
 
     /** Payer-facing message per outcome. */
-    public const OUTCOMES = [
-        'approved'           => 'Approved',
-        'declined'           => 'Your card was declined by the issuer.',
-        'insufficient_funds' => 'Insufficient funds on the card.',
-        'expired_card'       => 'The card has expired.',
-        'auth_failed'        => '3-D Secure authentication failed.',
-    ];
+    public const OUTCOMES = DemoCard::OUTCOMES;
 
     /** Test card number => outcome ('challenge' = 3-D Secure OTP step). */
-    public const TEST_CARDS = [
-        '4242424242424242' => 'approved',
-        '4000000000000002' => 'declined',
-        '4000000000009995' => 'insufficient_funds',
-        '4000000000000069' => 'expired_card',
-        '4000000000003220' => 'challenge',
-    ];
+    public const TEST_CARDS = DemoCard::TEST_CARDS;
 
     private ?Container $container = null;
 
@@ -407,78 +396,27 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
 
     public static function sign(string $trxId, string $session, string $outcome, string $amount, string $secret): string
     {
-        return hash_hmac('sha256', implode('|', [$trxId, $session, $outcome, $amount]), $secret);
+        return DemoCard::sign($trxId, $session, $outcome, $amount, $secret);
     }
 
     public static function luhn(string $digits): bool
     {
-        if (!preg_match('/^\d{12,19}$/', $digits)) {
-            return false;
-        }
-        $sum = 0;
-        $double = false;
-        for ($i = strlen($digits) - 1; $i >= 0; $i--) {
-            $d = (int) $digits[$i];
-            if ($double) {
-                $d *= 2;
-                if ($d > 9) {
-                    $d -= 9;
-                }
-            }
-            $sum += $d;
-            $double = !$double;
-        }
-        return $sum % 10 === 0;
+        return DemoCard::luhn($digits);
     }
 
-    /**
-     * Resolves a Luhn-valid card number to an outcome, or 'challenge' when 3-D Secure applies.
-     */
     public static function cardOutcome(string $number, string $threeDs): string
     {
-        $outcome = self::TEST_CARDS[$number] ?? 'approved';
-        if ($threeDs === 'always' && $outcome === 'approved') {
-            return 'challenge';
-        }
-        if ($threeDs === 'never' && $outcome === 'challenge') {
-            return 'approved';
-        }
-        return $outcome;
+        return DemoCard::outcome($number, $threeDs);
     }
 
     public static function cardBrand(string $number): string
     {
-        return match (true) {
-            str_starts_with($number, '4')                    => 'Visa',
-            (bool) preg_match('/^(5[1-5]|2[2-7])/', $number) => 'Mastercard',
-            (bool) preg_match('/^3[47]/', $number)           => 'Amex',
-            default                                          => 'Card',
-        };
+        return DemoCard::brand($number);
     }
 
-    /**
-     * Returns a payer-facing validation error, or null when the card details are acceptable.
-     */
     public static function validateCard(string $name, string $number, string $expiry, string $cvc, ?int $now = null): ?string
     {
-        if ($name === '') {
-            return 'Enter the name on the card.';
-        }
-        if (!self::luhn($number)) {
-            return 'The card number is not valid.';
-        }
-        if (!preg_match('#^(0[1-9]|1[0-2])\s*/\s*(\d{2})$#', $expiry, $m)) {
-            return 'Enter the expiry date as MM/YY.';
-        }
-        $now ??= time();
-        $expiresYm = (2000 + (int) $m[2]) * 100 + (int) $m[1];
-        if ($expiresYm < (int) date('Ym', $now)) {
-            return 'The card expiry date is in the past.';
-        }
-        if (!preg_match('/^\d{3,4}$/', $cvc)) {
-            return 'Enter the 3 or 4 digit security code.';
-        }
-        return null;
+        return DemoCard::validate($name, $number, $expiry, $cvc, $now);
     }
 
     /**

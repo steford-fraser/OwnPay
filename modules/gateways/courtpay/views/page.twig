@@ -1,0 +1,143 @@
+{% extends '@gateway_courtpay/_layout.twig' %}
+
+{% block styles %}
+        .cp-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--cp-line); margin-bottom: 18px; overflow-x: auto; }
+        .cp-tab { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--cp-muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+        .cp-tab.cp-on { color: var(--cp-navy); border-bottom-color: var(--cp-red); }
+        .cp-sub { font-size: 12px; color: var(--cp-muted); }
+        .cp-intro { margin: 0 0 16px; font-size: 14px; color: var(--cp-muted); line-height: 1.5; }
+        .cp-who { font-size: 13px; color: var(--cp-muted); margin-bottom: 14px; }
+        .cp-who strong { color: var(--cp-navy); }
+        .cp-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; font-size: 11px; font-weight: 700; color: var(--cp-muted); }
+        .cp-badges span { border: 1px solid var(--cp-line); border-radius: 4px; padding: 3px 7px; }
+        .cp-badges .cp-fac { border: 0; padding: 0; font-weight: 600; }
+        .cp-list { list-style: none; margin: 0 0 12px; padding: 0; }
+        .cp-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--cp-line); border-radius: 10px; margin-bottom: 8px; }
+        .cp-code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
+        .cp-remove { background: none; border: 0; color: #b91c1c; font-size: 13px; cursor: pointer; }
+        .cp-due { display: flex; justify-content: space-between; font-weight: 700; padding: 10px 0; }
+        .cp-due.cp-zero { color: var(--cp-ok); }
+        .cp-apply { display: flex; gap: 8px; margin: 6px 0 14px; }
+        .cp-apply input { flex: 1; min-width: 0; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; text-transform: uppercase; font-family: ui-monospace, Menlo, monospace; }
+        .cp-hint { margin-top: 16px; font-size: 12px; color: var(--cp-muted); border-top: 1px dashed var(--cp-line); padding-top: 12px; line-height: 1.6; }
+{% endblock %}
+
+{% block content %}
+    <nav class="cp-tabs" aria-label="Payment method">
+        {% for key, title in methods %}
+            <a class="cp-tab{{ key == method ? ' cp-on' : '' }}" href="{{ base }}/page?method={{ key }}"{% if key == method %} aria-current="page"{% endif %}>{{ title }}</a>
+        {% endfor %}
+    </nav>
+
+    {% if identify is defined %}
+        {% set ci = identify %}
+        {% set ci_method = method %}
+        <p class="cp-intro">Top-up Vouchers are redeemed against your CourtPay account. Sign in with the email or mobile number on your account.</p>
+        {% include 'checkout/partials/_customer_identify.twig' %}
+    {% else %}
+        {% if message or error %}<div class="cp-msg{{ (is_error or error) ? ' cp-err' : '' }}" role="status">{{ error ?: message }}</div>{% endif %}
+
+        {% if method == 'card' %}
+            <p class="cp-intro">Pay court ordered fines, traffic tickets and fixed penalty notices. No registration is needed.</p>
+            <div class="cp-badges"><span>VISA</span><span>Visa Debit</span><span>Mastercard</span><span class="cp-fac">&#128274; Secured by First Atlantic Commerce</span></div>
+            <form method="post" action="{{ base }}/card" id="cp-card" autocomplete="off" novalidate>
+                <input type="hidden" name="token" value="{{ token }}">
+                <div class="cp-field">
+                    <label for="reference">Court, ticket or notice number <span class="cp-opt">(optional)</span></label>
+                    <input id="reference" name="reference" value="{{ reference }}" maxlength="40" placeholder="e.g. POS-TT-2026-001234">
+                </div>
+                <div class="cp-field">
+                    <label for="cardholder">Name on card</label>
+                    <input id="cardholder" name="cardholder" value="{{ name }}" autocomplete="cc-name" required>
+                </div>
+                <div class="cp-field">
+                    <label for="card_number">Card number</label>
+                    <input id="card_number" name="card_number" inputmode="numeric" placeholder="1234 1234 1234 1234" maxlength="23" autocomplete="cc-number" required>
+                </div>
+                <div class="cp-row">
+                    <div class="cp-field">
+                        <label for="expiry">Expiry (MM/YY)</label>
+                        <input id="expiry" name="expiry" inputmode="numeric" placeholder="12/30" maxlength="5" autocomplete="cc-exp" required>
+                    </div>
+                    <div class="cp-field">
+                        <label for="cvc">Security code</label>
+                        <input id="cvc" name="cvc" inputmode="numeric" placeholder="123" maxlength="4" autocomplete="cc-csc" required>
+                    </div>
+                </div>
+                <button type="submit" class="cp-btn">Pay {{ currency }} {{ amount|number_format(2) }}</button>
+            </form>
+
+        {% elseif method == 'voucher' %}
+            <div class="cp-who">Signed in to CourtPay as <strong>{{ signed_in }}</strong></div>
+            {% if applied is not empty %}
+            <ul class="cp-list">
+                {% for a in applied %}
+                <li>
+                    <div>
+                        <div class="cp-code">{{ a.code }}</div>
+                        <div class="cp-sub">Balance {{ currency }} {{ a.balance|number_format(2) }} &middot; {{ currency }} {{ (a.balance - a.amount)|number_format(2) }} left after payment</div>
+                    </div>
+                    <div>
+                        <strong>- {{ currency }} {{ a.amount|number_format(2) }}</strong>
+                        <form method="post" action="{{ base }}/voucher/remove">
+                            <input type="hidden" name="token" value="{{ token }}">
+                            <input type="hidden" name="code" value="{{ a.code }}">
+                            <button type="submit" class="cp-remove">Remove</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <div class="cp-due{{ remaining == '0.00' ? ' cp-zero' : '' }}">
+                <span>{{ remaining == '0.00' ? 'Fully covered' : 'Still due' }}</span>
+                <span>{{ currency }} {{ remaining|number_format(2) }}</span>
+            </div>
+
+            {% if remaining != '0.00' and can_add %}
+            <form method="post" action="{{ base }}/voucher/apply" class="cp-apply" autocomplete="off">
+                <input type="hidden" name="token" value="{{ token }}">
+                <input name="code" placeholder="Top-up Voucher number" aria-label="Top-up Voucher number" required autofocus>
+                <button type="submit" class="cp-btn cp-btn-alt">Apply</button>
+            </form>
+            {% endif %}
+
+            <form method="post" action="{{ base }}/voucher/confirm" class="cp-submit">
+                <input type="hidden" name="token" value="{{ token }}">
+                <button type="submit" class="cp-btn"{{ remaining != '0.00' or applied is empty ? ' disabled' : '' }}>Pay {{ currency }} {{ amount|number_format(2) }}</button>
+            </form>
+            <div class="cp-hint">
+                CourtPay Top-up Vouchers are sold with cash or Linx at authorised merchants and at the self-service machines outside most court buildings.
+                Enter the voucher number printed on your receipt. If a voucher's balance is lower than the amount due, add another voucher for the rest.
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <a class="cp-cancel" href="{{ base }}/cancel">Cancel and choose another payment method</a>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    (function () {
+        var number = document.getElementById('card_number');
+        if (number) {
+            var expiry = document.getElementById('expiry');
+            var cvc = document.getElementById('cvc');
+            number.addEventListener('input', function () { number.value = number.value.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim(); });
+            expiry.addEventListener('input', function () {
+                var d = expiry.value.replace(/\D/g, '').slice(0, 4);
+                expiry.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+            });
+            cvc.addEventListener('input', function () { cvc.value = cvc.value.replace(/\D/g, '').slice(0, 4); });
+        }
+        document.querySelectorAll('#cp-card, .cp-submit').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                var btn = form.querySelector('button[type=submit]');
+                btn.disabled = true;
+                btn.textContent = 'Processing...';
+            });
+        });
+    })();
+</script>
+{% endblock %}

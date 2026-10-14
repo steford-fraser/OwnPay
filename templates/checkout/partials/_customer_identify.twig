@@ -1,6 +1,7 @@
 {#
     Payer identification step shown by the NPICTT hosted gateways before payment.
-    Expects: ci (CheckoutIdentityService::viewVars), base (gateway page base path), token, error, nonce.
+    Expects: ci (CheckoutIdentityService::viewVars), base (gateway page base path), token, error, nonce;
+    optional ci_method (payment method tab to return to).
 #}
 <style nonce="{{ nonce }}">
     .ci-title { font-size: 20px; margin: 0 0 6px; }
@@ -27,7 +28,7 @@
     <p class="ci-lead">We couldn't find an account for <strong>{{ ci.prefill }}</strong> with {{ merchant.name }}. Enter your details to continue.</p>
     {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="{{ base }}/signup" autocomplete="on" novalidate>
-        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="token" value="{{ token }}">{% if ci_method is defined and ci_method %}<input type="hidden" name="method" value="{{ ci_method }}">{% endif %}
         <div class="ci-row">
             <div class="ci-field">
                 <label for="ci-first">First name</label>
@@ -49,7 +50,7 @@
         <button type="submit" class="ci-btn">Continue</button>
     </form>
     <form method="post" action="{{ base }}/identify/reset" class="ci-alt">
-        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="token" value="{{ token }}">{% if ci_method is defined and ci_method %}<input type="hidden" name="method" value="{{ ci_method }}">{% endif %}
         Already have an account? <button type="submit" class="ci-link">Use a different email or phone</button>
     </form>
 
@@ -61,7 +62,7 @@
     </p>
     {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="{{ base }}/verify" autocomplete="off" novalidate>
-        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="token" value="{{ token }}">{% if ci_method is defined and ci_method %}<input type="hidden" name="method" value="{{ ci_method }}">{% endif %}
         <div class="ci-field">
             <label for="ci-code">Verification code</label>
             <input id="ci-code" name="code" class="ci-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="------" required autofocus>
@@ -69,7 +70,7 @@
         <button type="submit" class="ci-btn">Verify and continue</button>
     </form>
     <form method="post" action="{{ base }}/identify/reset" class="ci-alt">
-        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="token" value="{{ token }}">{% if ci_method is defined and ci_method %}<input type="hidden" name="method" value="{{ ci_method }}">{% endif %}
         Didn't get a code? <button type="submit" class="ci-link">Use a different email or phone</button>
     </form>
 
@@ -78,7 +79,7 @@
     <p class="ci-lead">Enter your email address or mobile number. We'll send you a code to confirm it's you.</p>
     {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="{{ base }}/identify" autocomplete="on" novalidate>
-        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="token" value="{{ token }}">{% if ci_method is defined and ci_method %}<input type="hidden" name="method" value="{{ ci_method }}">{% endif %}
         <div class="ci-field">
             <label for="ci-contact">Email or mobile number</label>
             <input id="ci-contact" name="contact" value="{{ ci.prefill }}" autocomplete="username" placeholder="you@example.com or +1 868 000 0000" maxlength="190" required autofocus>
