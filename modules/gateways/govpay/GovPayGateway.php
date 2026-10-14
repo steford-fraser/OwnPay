@@ -83,8 +83,8 @@ final class GovPayGateway implements PluginInterface, GatewayAdapterInterface
     {
         $yesNo = ['yes' => 'Yes', 'no' => 'No'];
         return [
-            ['name' => 'merchant_code', 'label' => 'GovPay Agency Code', 'type' => 'text', 'required' => true],
-            ['name' => 'api_key', 'label' => 'GovPay API Key', 'type' => 'password', 'required' => true],
+            ['name' => 'merchant_code', 'label' => 'GovPay Agency Code', 'type' => 'text'],
+            ['name' => 'api_key', 'label' => 'GovPay API Key', 'type' => 'password'],
             ['name' => 'checkout_label', 'label' => 'Checkout Label', 'type' => 'text', 'default' => self::DEFAULT_LABEL],
             ['name' => 'method_card', 'label' => 'Accept cards', 'type' => 'select', 'options' => $yesNo, 'default' => 'yes'],
             ['name' => 'method_wallet', 'label' => 'Accept GovPay Wallet', 'type' => 'select', 'options' => $yesNo, 'default' => 'yes'],
@@ -110,7 +110,7 @@ final class GovPayGateway implements PluginInterface, GatewayAdapterInterface
         $trxId = $this->getString($callbackData['trx_id'] ?? '');
         $session = $this->getString($callbackData['session'] ?? '');
         return match ($this->getString($callbackData['method'] ?? '')) {
-            'card'   => $this->verifyCard($callbackData, $this->getString($credentials['api_key'] ?? '')),
+            'card'   => $this->verifyCard($callbackData, self::signingKey($credentials)),
             'wallet' => self::verifyTaken($trxId, $session, $this->wallets()->debitedTotal($trxId)),
             'code'   => self::verifyTaken($trxId, $session, $this->codeStore()->redeemedTotal($trxId)),
             default  => ['success' => false, 'status' => 'failed', 'trx_id' => $trxId],

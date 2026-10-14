@@ -95,18 +95,19 @@ final class GovPayGatewayTest extends TestCase
         $this->assertFalse($gw->verify(['trx_id' => 'NONE', 'method' => 'code'], [])['success']);
     }
 
-    public function testInitiateRequiresKeyAndAMethod(): void
+    public function testInitiateRequiresAMethod(): void
     {
         $params = ['amount' => '10.00', 'currency' => 'TTD', 'trx_id' => 'T1', 'redirect_url' => 'https://x.test/checkout/T1/status', 'cancel_url' => 'https://x.test/checkout/T1'];
-        try {
-            (new GovPayGateway())->initiate($params, []);
-            $this->fail('Expected missing API key to be rejected.');
-        } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('API key', $e->getMessage());
-        }
+        $this->expectExceptionMessage('No GovPay payment methods are enabled.');
+        (new GovPayGateway())->initiate($params, ['method_card' => 'no', 'method_wallet' => 'no', 'method_code' => 'no']);
+    }
 
-        $this->expectException(\RuntimeException::class);
-        (new GovPayGateway())->initiate($params, ['api_key' => self::KEY, 'method_card' => 'no', 'method_wallet' => 'no', 'method_code' => 'no']);
+    public function testCardResultVerifiesWithoutConfiguredKey(): void
+    {
+        $data = ['trx_id' => 'T1', 'session' => 'gp_abc', 'outcome' => 'approved', 'amount' => '25.00', 'method' => 'card'];
+        $data['signature'] = DemoCard::sign('T1', 'gp_abc', 'approved', '25.00', DemoCard::secret(null, 'govpay'));
+        $this->assertTrue((new GovPayGateway())->verify($data, [])['success']);
+        $this->assertFalse((new GovPayGateway())->verify($data, ['api_key' => self::KEY])['success']);
     }
 
     public function testEnabledMethods(): void

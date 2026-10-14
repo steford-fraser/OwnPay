@@ -115,9 +115,6 @@ trait HostedDemoGateway
      */
     protected function openSession(array $params, array $credentials, string $sessionPrefix, array $extra = []): array
     {
-        if ($this->getString($credentials['api_key'] ?? '') === '') {
-            throw new \RuntimeException(static::metadata()['name'] . ' API key is not configured.');
-        }
         if (self::enabledMethods($credentials) === []) {
             throw new \RuntimeException('No ' . static::metadata()['name'] . ' payment methods are enabled.');
         }
@@ -263,9 +260,6 @@ trait HostedDemoGateway
 
         $mid = $this->getInt($txn['merchant_id'] ?? 0);
         $creds = $this->credentialsFor($mid);
-        if (($creds['api_key'] ?? '') === '') {
-            return Response::html(static::metadata()['name'] . ' is not configured for this brand.', 403);
-        }
 
         if ($this->getInt($meta['expires_at'] ?? 0) < time()) {
             $svc = $this->container?->get(TransactionService::class);
@@ -433,7 +427,7 @@ trait HostedDemoGateway
             'card'      => $this->cardOf($ctx['meta']),
             'outcome'   => $outcome,
             'delay'     => $delay,
-            'signature' => DemoCard::sign($ctx['trx'], $session, $outcome, $amount, $ctx['creds']['api_key'] ?? ''),
+            'signature' => DemoCard::sign($ctx['trx'], $session, $outcome, $amount, self::signingKey($ctx['creds'])),
         ]);
     }
 
@@ -722,7 +716,15 @@ trait HostedDemoGateway
      */
     protected function formToken(array $ctx): string
     {
-        return hash_hmac('sha256', 'form|' . $ctx['trx'] . '|' . $this->getString($ctx['meta']['session'] ?? ''), $ctx['creds']['api_key'] ?? '');
+        return hash_hmac('sha256', 'form|' . $ctx['trx'] . '|' . $this->getString($ctx['meta']['session'] ?? ''), self::signingKey($ctx['creds']));
+    }
+
+    /**
+     * @param array<string, mixed> $creds
+     */
+    protected static function signingKey(array $creds): string
+    {
+        return DemoCard::secret($creds['api_key'] ?? null, self::SLUG);
     }
 
     /**

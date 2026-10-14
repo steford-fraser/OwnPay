@@ -78,8 +78,8 @@ final class CourtPayGateway implements PluginInterface, GatewayAdapterInterface
     {
         $yesNo = ['yes' => 'Yes', 'no' => 'No'];
         return [
-            ['name' => 'merchant_code', 'label' => 'CourtPay Court Location Code', 'type' => 'text', 'required' => true],
-            ['name' => 'api_key', 'label' => 'CourtPay API Key', 'type' => 'password', 'required' => true],
+            ['name' => 'merchant_code', 'label' => 'CourtPay Court Location Code', 'type' => 'text'],
+            ['name' => 'api_key', 'label' => 'CourtPay API Key', 'type' => 'password'],
             ['name' => 'checkout_label', 'label' => 'Checkout Label', 'type' => 'text', 'default' => self::DEFAULT_LABEL],
             ['name' => 'method_card', 'label' => 'Accept fines and fees by card', 'type' => 'select', 'options' => $yesNo, 'default' => 'yes'],
             ['name' => 'method_voucher', 'label' => 'Accept CourtPay Top-up Vouchers', 'type' => 'select', 'options' => $yesNo, 'default' => 'yes'],
@@ -103,7 +103,7 @@ final class CourtPayGateway implements PluginInterface, GatewayAdapterInterface
         $trxId = $this->getString($callbackData['trx_id'] ?? '');
         $session = $this->getString($callbackData['session'] ?? '');
         return match ($this->getString($callbackData['method'] ?? '')) {
-            'card'    => $this->verifyCard($callbackData, $this->getString($credentials['api_key'] ?? '')),
+            'card'    => $this->verifyCard($callbackData, self::signingKey($credentials)),
             'voucher' => self::verifyTaken($trxId, $session, $this->codeStore()->redeemedTotal($trxId)),
             default   => ['success' => false, 'status' => 'failed', 'trx_id' => $trxId],
         };

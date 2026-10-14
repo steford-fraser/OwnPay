@@ -123,8 +123,8 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
     {
         return [
             ['name' => 'demo_enabled', 'label' => 'Accept payments', 'type' => 'select', 'options' => ['yes' => 'Yes', 'no' => 'No'], 'default' => 'yes', 'required' => true],
-            ['name' => 'publishable_key', 'label' => 'Publishable Key', 'type' => 'text', 'required' => true],
-            ['name' => 'secret_key', 'label' => 'Secret Key', 'type' => 'password', 'required' => true],
+            ['name' => 'publishable_key', 'label' => 'Publishable Key', 'type' => 'text'],
+            ['name' => 'secret_key', 'label' => 'Secret Key', 'type' => 'password'],
             ['name' => 'checkout_label', 'label' => 'Checkout Label', 'type' => 'text', 'default' => self::DEFAULT_LABEL],
             ['name' => 'three_ds', 'label' => '3-D Secure', 'type' => 'select', 'options' => ['test_cards' => 'Only for the 3DS test card', 'always' => 'Always challenge', 'never' => 'Never challenge'], 'default' => 'test_cards'],
             ['name' => 'processing_delay', 'label' => 'Processing delay (seconds)', 'type' => 'text', 'default' => '2'],
@@ -138,11 +138,8 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
 
     public function initiate(array $params, array $credentials): array
     {
-        if (($credentials['demo_enabled'] ?? '') !== 'yes') {
+        if (!self::enabled($credentials)) {
             throw new \RuntimeException('Card payments are not enabled for this brand.');
-        }
-        if ($this->getString($credentials['secret_key'] ?? '') === '') {
-            throw new \RuntimeException('Card gateway secret key is not configured.');
         }
 
         $trxId = $params['trx_id'];
@@ -186,10 +183,10 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
         $outcome = $this->getString($callbackData['outcome'] ?? '');
         $amount = $this->getString($callbackData['amount'] ?? '');
         $signature = $this->getString($callbackData['signature'] ?? '');
-        $secret = $this->getString($credentials['secret_key'] ?? '');
+        $secret = self::signingKey($credentials);
 
         $fail = ['success' => false, 'status' => 'failed', 'trx_id' => $trxId];
-        if ($secret === '' || $trxId === '' || $session === '' || $signature === '' || !is_numeric($amount)) {
+        if ($trxId === '' || $session === '' || $signature === '' || !is_numeric($amount)) {
             return $fail;
         }
         if (!hash_equals(self::sign($trxId, $session, $outcome, $amount, $secret), $signature)) {
@@ -210,7 +207,7 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
 
     public function refund(string $gatewayTrxId, string $amount, array $credentials): array
     {
-        if (($credentials['demo_enabled'] ?? '') !== 'yes') {
+        if (!self::enabled($credentials)) {
             return ['success' => false, 'error' => 'Card payments are not enabled for this brand.'];
         }
         return ['success' => true, 'refund_id' => 're_' . bin2hex(random_bytes(8))];
@@ -495,7 +492,7 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
             'card'      => $card,
             'outcome'   => $outcome,
             'delay'     => $delay,
-            'signature' => self::sign($ctx['trx'], $session, $outcome, $amount, $ctx['creds']['secret_key'] ?? ''),
+            'signature' => self::sign($ctx['trx'], $session, $outcome, $amount, self::signingKey($ctx['creds'])),
         ]);
     }
 
@@ -522,7 +519,7 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
 
         $mid = $this->getInt($txn['merchant_id'] ?? 0);
         $creds = $this->credentialsFor($mid);
-        if (($creds['demo_enabled'] ?? '') !== 'yes' || ($creds['secret_key'] ?? '') === '') {
+        if (!self::enabled($creds)) {
             return Response::html('Card payments are not enabled for this brand.', 403);
         }
 
@@ -575,7 +572,23 @@ final class DemoPayGateway implements PluginInterface, GatewayAdapterInterface
      */
     private function formToken(array $ctx): string
     {
-        return hash_hmac('sha256', 'form|' . $ctx['trx'] . '|' . $this->getString($ctx['meta']['session'] ?? ''), $ctx['creds']['secret_key'] ?? '');
+        return hash_hmac('sha256', 'form|' . $ctx['trx'] . '|' . $this->getString($ctx['meta']['session'] ?? ''), self::signingKey($ctx['creds']));
+    }
+
+    /**
+     * @param array<string, mixed> $creds
+     */
+    private static function enabled(array $creds): bool
+    {
+        return ($creds['demo_enabled'] ?? 'yes') !== 'no';
+    }
+
+    /**
+     * @param array<string, mixed> $creds
+     */
+    private static function signingKey(array $creds): string
+    {
+        return DemoCard::secret($creds['secret_key'] ?? null, self::SLUG);
     }
 
     /**

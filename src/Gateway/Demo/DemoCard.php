@@ -39,6 +39,19 @@ final class DemoCard
         'never'      => 'Never challenge',
     ];
 
+    /**
+     * Signing secret for a simulated gateway: the brand's configured key, or one derived from
+     * APP_KEY so the demo works without any credentials being entered.
+     */
+    public static function secret(mixed $configured, string $gateway): string
+    {
+        if (is_string($configured) && $configured !== '') {
+            return $configured;
+        }
+        $appKey = $_ENV['APP_KEY'] ?? getenv('APP_KEY');
+        return hash_hmac('sha256', 'demo-gateway|' . $gateway, is_string($appKey) ? $appKey : '');
+    }
+
     public static function sign(string $trxId, string $session, string $outcome, string $amount, string $secret): string
     {
         return hash_hmac('sha256', implode('|', [$trxId, $session, $outcome, $amount]), $secret);
