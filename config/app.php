@@ -18,7 +18,7 @@ declare(strict_types=1);
  */
 return [
     // Identity parameters
-    'name'    => 'OwnPay',
+    'name'    => (is_string($_ENV['APP_NAME'] ?? null) && $_ENV['APP_NAME'] !== '') ? $_ENV['APP_NAME'] : (getenv('APP_NAME') ?: 'NPICTT Pay'),
     'version' => \OwnPay\Support\Version::CURRENT,
     'codename'=> 'Genesis',
 

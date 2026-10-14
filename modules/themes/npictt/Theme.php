@@ -90,7 +90,10 @@ final class Theme implements PluginInterface
                 $slug = is_string($slug) ? $slug : '';
                 $registry = $container->has(\OwnPay\Plugin\PluginRegistry::class) ? $container->get(\OwnPay\Plugin\PluginRegistry::class) : null;
                 $plugin = $registry instanceof \OwnPay\Plugin\PluginRegistry ? ($registry->getLoaded()[$slug] ?? null) : null;
-                if (is_object($plugin) && method_exists($plugin, 'checkoutLabel')) {
+                if (is_object($plugin) && is_callable([$plugin, 'statusLabel'])) {
+                    return (string) $plugin->statusLabel();
+                }
+                if (is_object($plugin) && is_callable([$plugin, 'checkoutLabel'])) {
                     return (string) $plugin->checkoutLabel(is_numeric($merchantId) ? (int) $merchantId : 0);
                 }
                 return $slug;
@@ -143,7 +146,7 @@ final class Theme implements PluginInterface
             ],
             [
                 'name'    => 'show_powered_by',
-                'label'   => 'Show "Powered by OwnPay"',
+                'label'   => 'Show "Powered by" credit',
                 'type'    => 'toggle',
                 'default' => '1',
             ],

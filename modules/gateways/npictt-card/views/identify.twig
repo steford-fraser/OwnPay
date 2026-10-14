@@ -1,0 +1,6 @@
+{% extends '@gateway_demopay/_layout.twig' %}
+
+{% block content %}
+    {% include 'checkout/partials/_customer_identify.twig' %}
+    <a class="dp-cancel" href="{{ base }}/cancel">Cancel and return to {{ merchant.name }}</a>
+{% endblock %}

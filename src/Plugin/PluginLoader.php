@@ -455,7 +455,7 @@ final class PluginLoader
             return;
         }
 
-        $links = '';
+        $items = [];
         foreach ($manifest->adminMenu as $item) {
             if (!is_array($item)) {
                 continue;
@@ -466,16 +466,25 @@ final class PluginLoader
             if ($label === '' || !str_starts_with($url, '/')) {
                 continue;
             }
-            $links .= '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '" class="op-nav-link"><span>'
-                . htmlspecialchars($label, ENT_QUOTES) . '</span></a>';
+            $items[] = ['label' => $label, 'url' => $url];
         }
 
-        if ($links === '') {
+        if ($items === []) {
             return;
         }
 
-        $this->events->addAction('admin.menu.register', static function () use ($links): void {
-            echo $links;
+        $icon = '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">'
+            . '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>'
+            . '<rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+
+        $this->events->addAction('admin.menu.register', static function () use ($items, $icon): void {
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+            $path = is_string($uri) ? (string) parse_url($uri, PHP_URL_PATH) : '';
+            foreach ($items as $item) {
+                $active = $path === $item['url'] || str_starts_with($path, rtrim($item['url'], '/') . '/');
+                echo '<a href="' . htmlspecialchars($item['url'], ENT_QUOTES) . '" class="op-nav-item-link' . ($active ? ' op-active' : '') . '">'
+                    . $icon . '<span>' . htmlspecialchars($item['label'], ENT_QUOTES) . '</span></a>';
+            }
         });
     }
 

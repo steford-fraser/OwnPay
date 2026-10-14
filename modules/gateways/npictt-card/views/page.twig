@@ -1,0 +1,51 @@
+{% extends '@gateway_demopay/_layout.twig' %}
+
+{% block content %}
+    <h1>Pay with card</h1>
+    {% if error %}<div class="dp-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ base }}/submit" id="dp-form" autocomplete="off" novalidate>
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="dp-field">
+            <label for="cardholder">Name on card</label>
+            <input id="cardholder" name="cardholder" value="{{ name }}" autocomplete="cc-name" required>
+        </div>
+        <div class="dp-field">
+            <label for="card_number">Card number</label>
+            <input id="card_number" name="card_number" inputmode="numeric" placeholder="1234 1234 1234 1234" maxlength="23" autocomplete="cc-number" required>
+        </div>
+        <div class="dp-row">
+            <div class="dp-field">
+                <label for="expiry">Expiry (MM/YY)</label>
+                <input id="expiry" name="expiry" inputmode="numeric" placeholder="12/30" maxlength="5" autocomplete="cc-exp" required>
+            </div>
+            <div class="dp-field">
+                <label for="cvc">Security code</label>
+                <input id="cvc" name="cvc" inputmode="numeric" placeholder="123" maxlength="4" autocomplete="cc-csc" required>
+            </div>
+        </div>
+        <button type="submit" class="dp-btn">Pay {{ currency }} {{ amount|number_format(2) }}</button>
+    </form>
+    <a class="dp-cancel" href="{{ base }}/cancel">Cancel and return to {{ merchant.name }}</a>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    (function () {
+        var number = document.getElementById('card_number');
+        var expiry = document.getElementById('expiry');
+        var cvc = document.getElementById('cvc');
+        function groups(v) { return v.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim(); }
+        number.addEventListener('input', function () { number.value = groups(number.value); });
+        expiry.addEventListener('input', function () {
+            var d = expiry.value.replace(/\D/g, '').slice(0, 4);
+            expiry.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+        });
+        cvc.addEventListener('input', function () { cvc.value = cvc.value.replace(/\D/g, '').slice(0, 4); });
+        document.getElementById('dp-form').addEventListener('submit', function () {
+            var btn = this.querySelector('button[type=submit]');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+        });
+    })();
+</script>
+{% endblock %}

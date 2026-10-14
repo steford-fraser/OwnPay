@@ -1096,7 +1096,7 @@ final class PaymentIntentCheckoutController
                 $intent = $row;
             }
         }
-        $brand = $mid > 0 ? $this->loadBrand($mid) : ['name' => 'OwnPay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''];
+        $brand = $mid > 0 ? $this->loadBrand($mid) : ['name' => 'NPICTT Pay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''];
 
         $txn = null;
         if ($intent) {

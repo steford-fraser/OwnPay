@@ -277,7 +277,7 @@ final class TwigExtensions extends AbstractExtension
         if (is_array($configApp) && isset($configApp['name']) && is_string($configApp['name'])) {
             return $configApp['name'];
         }
-        return 'OwnPay';
+        return 'NPICTT Pay';
     }
 
     /**

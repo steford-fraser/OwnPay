@@ -69,10 +69,12 @@ final class CustomerPiiService
 
         $encrypted['uuid'] = Uuid::uuid4()->toString();
 
+        // email_hash is NOT NULL and unique per merchant, so a customer without an email gets a
+        // per-record placeholder that no real address can hash to.
         $emailVal = $data['email'] ?? '';
         $encrypted['email_hash'] = is_string($emailVal) && $emailVal !== ''
             ? $this->encryptor->deterministicHash($emailVal)
-            : '';
+            : $this->encryptor->deterministicHash('no-email:' . $encrypted['uuid']);
         $phoneVal = $data['phone'] ?? '';
         if (is_string($phoneVal) && $phoneVal !== '') {
             $encrypted['phone_hash'] = $this->encryptor->deterministicHash($phoneVal);

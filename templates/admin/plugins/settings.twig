@@ -21,11 +21,11 @@
     <div class="op-plugin-meta">
         <span class="op-badge op-badge-{{ plugin.type }}">{{ plugin.type|capitalize }}</span>
         <span class="op-text-muted">v{{ plugin.version }}</span>
-        <span class="op-text-muted">by {{ plugin.author|default('Unknown') }}</span>
+        <span class="op-text-muted">by {{ plugin.author|default('Unknown')|replace({' for OwnPay': '', 'OwnPay': 'NPICTT'}) }}</span>
     </div>
 
     {% if plugin.description %}
-    <p class="op-plugin-desc">{{ plugin.description }}</p>
+    <p class="op-plugin-desc">{{ plugin.description|replace({' for OwnPay': '', 'OwnPay': 'NPICTT'}) }}</p>
     {% endif %}
 </div>
 

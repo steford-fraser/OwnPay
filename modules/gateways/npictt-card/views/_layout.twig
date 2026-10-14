@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}NPICTT Payment Gateway{% endblock %}</title>
+    <link rel="icon" href="/assets/themes/npictt/favicon-32.png">
+    <style>
+        :root { --dp-brand: {{ merchant.color }}; --dp-ink: #0f172a; --dp-muted: #64748b; --dp-line: #e2e8f0; --dp-accent: #0003B1; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f1f5f9; color: var(--dp-ink); }
+        .dp-top { background: #fff; border-bottom: 3px solid #E4002B; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .dp-logo { display: flex; align-items: center; gap: 14px; }
+        .dp-logo img { height: 42px; width: auto; }
+        .dp-logo span { padding-left: 14px; border-left: 1px solid var(--dp-line); font-weight: 700; font-size: 16px; color: var(--dp-accent); }
+        .dp-secure { font-size: 12px; color: var(--dp-muted); }
+        @media (max-width: 560px) { .dp-logo span, .dp-secure { display: none; } }
+        .dp-wrap { max-width: 920px; margin: 32px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 24px; }
+        .dp-card { background: #fff; border: 1px solid var(--dp-line); border-radius: 14px; padding: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        .dp-merchant { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--dp-line); }
+        .dp-merchant img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; background: #fff; border: 1px solid var(--dp-line); }
+        .dp-merchant-dot { width: 44px; height: 44px; border-radius: 8px; background: var(--dp-brand); }
+        .dp-label { font-size: 12px; color: var(--dp-muted); text-transform: uppercase; letter-spacing: .06em; }
+        .dp-amount { font-size: 32px; font-weight: 700; margin: 18px 0 4px; }
+        .dp-ref { font-size: 13px; color: var(--dp-muted); overflow-wrap: anywhere; }
+        .dp-timer { margin-top: 18px; font-size: 13px; color: var(--dp-muted); }
+        h1 { font-size: 20px; margin: 0 0 16px; }
+        .dp-field { margin-bottom: 14px; }
+        .dp-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .dp-field input { width: 100%; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; }
+        .dp-field input:focus { border-color: var(--dp-accent); box-shadow: 0 0 0 3px rgba(0,3,177,.12); }
+        .dp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .dp-btn { width: 100%; padding: 13px; font-size: 16px; font-weight: 600; color: #fff; background: var(--dp-accent); border: 0; border-radius: 8px; cursor: pointer; }
+        .dp-btn:hover { filter: brightness(1.08); }
+        .dp-cancel { display: block; text-align: center; margin-top: 14px; font-size: 14px; color: var(--dp-muted); }
+        .dp-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+        .dp-center { text-align: center; }
+        .dp-spinner { width: 44px; height: 44px; margin: 10px auto 18px; border: 4px solid #e0e7ff; border-top-color: var(--dp-accent); border-radius: 50%; animation: dp-spin .8s linear infinite; }
+        @keyframes dp-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 760px) { .dp-wrap { grid-template-columns: 1fr; margin: 16px auto; } }
+    </style>
+</head>
+<body>
+    <header class="dp-top">
+        <div class="dp-logo"><img src="/assets/themes/npictt/logo.png" alt="NPICTT"><span>NPICTT Payment Gateway</span></div>
+        <div class="dp-secure">&#128274; Secure checkout</div>
+    </header>
+    <div class="dp-wrap">
+        <aside class="dp-card">
+            <div class="dp-merchant">
+                {% if merchant.logo %}<img src="{{ merchant.logo }}" alt="">{% else %}<span class="dp-merchant-dot"></span>{% endif %}
+                <div>
+                    <div class="dp-label">Paying</div>
+                    <strong>{{ merchant.name }}</strong>
+                </div>
+            </div>
+            <div class="dp-amount">{{ currency }} {{ amount|number_format(2) }}</div>
+            <div class="dp-ref">Reference {{ trx }}</div>
+            <div class="dp-timer">Session expires in <span id="dp-timer" data-seconds="{{ expires_in }}">{{ (expires_in // 60) }} min</span></div>
+        </aside>
+        <main class="dp-card">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script nonce="{{ nonce }}">
+        (function () {
+            var el = document.getElementById('dp-timer');
+            if (!el) { return; }
+            var left = parseInt(el.getAttribute('data-seconds'), 10) || 0;
+            function tick() {
+                var m = Math.floor(left / 60), s = left % 60;
+                el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                if (left > 0) { left--; setTimeout(tick, 1000); }
+            }
+            tick();
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

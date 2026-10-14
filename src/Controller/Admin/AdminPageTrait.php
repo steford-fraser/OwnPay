@@ -43,7 +43,7 @@ trait AdminPageTrait
         $session = $this->session;
 
         $appConfig = $c->get('config.app');
-        $appName = is_array($appConfig) && isset($appConfig['name']) && is_string($appConfig['name']) ? $appConfig['name'] : 'OwnPay';
+        $appName = is_array($appConfig) && isset($appConfig['name']) && is_string($appConfig['name']) ? $appConfig['name'] : 'NPICTT Pay';
         $appVersion = is_array($appConfig) && isset($appConfig['version']) && is_string($appConfig['version']) ? $appConfig['version'] : Version::CURRENT;
 
         $data['app_name']    = $appName;

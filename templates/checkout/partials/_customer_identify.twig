@@ -1,0 +1,89 @@
+{#
+    Payer identification step shown by the NPICTT hosted gateways before payment.
+    Expects: ci (CheckoutIdentityService::viewVars), base (gateway page base path), token, error, nonce.
+#}
+<style nonce="{{ nonce }}">
+    .ci-title { font-size: 20px; margin: 0 0 6px; }
+    .ci-lead { margin: 0 0 18px; font-size: 14px; color: #64748b; line-height: 1.5; }
+    .ci-lead strong { color: #0f172a; }
+    .ci-field { margin-bottom: 14px; }
+    .ci-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .ci-field .ci-opt { font-weight: 400; color: #64748b; }
+    .ci-field input { width: 100%; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-family: inherit; }
+    .ci-field input:focus { border-color: #0003B1; box-shadow: 0 0 0 3px rgba(0,3,177,.12); }
+    .ci-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ci-code { letter-spacing: .5em; text-align: center; font-size: 22px !important; font-family: ui-monospace, Menlo, monospace !important; }
+    .ci-btn { width: 100%; padding: 13px; font-size: 16px; font-weight: 600; color: #fff; background: #0003B1; border: 0; border-radius: 8px; cursor: pointer; }
+    .ci-btn:hover { filter: brightness(1.08); }
+    .ci-link { background: none; border: 0; padding: 0; color: #0003B1; font-size: 14px; cursor: pointer; text-decoration: underline; font-family: inherit; }
+    .ci-alt { margin-top: 14px; text-align: center; font-size: 14px; color: #64748b; }
+    .ci-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+    .ci-note { margin-top: 16px; font-size: 12px; color: #64748b; display: flex; gap: 8px; align-items: flex-start; }
+    @media (max-width: 480px) { .ci-row { grid-template-columns: 1fr; gap: 0; } }
+</style>
+
+{% if ci.stage == 'signup' %}
+    <h1 class="ci-title">Create your account</h1>
+    <p class="ci-lead">We couldn't find an account for <strong>{{ ci.prefill }}</strong> with {{ merchant.name }}. Enter your details to continue.</p>
+    {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ base }}/signup" autocomplete="on" novalidate>
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="ci-row">
+            <div class="ci-field">
+                <label for="ci-first">First name</label>
+                <input id="ci-first" name="first_name" value="{{ ci.first_name }}" autocomplete="given-name" maxlength="60" required autofocus>
+            </div>
+            <div class="ci-field">
+                <label for="ci-last">Last name</label>
+                <input id="ci-last" name="last_name" value="{{ ci.last_name }}" autocomplete="family-name" maxlength="60" required>
+            </div>
+        </div>
+        <div class="ci-field">
+            <label for="ci-email">Email address {% if ci.channel == 'sms' %}<span class="ci-opt">(optional)</span>{% endif %}</label>
+            <input id="ci-email" name="email" type="email" value="{{ ci.email }}" autocomplete="email" maxlength="190">
+        </div>
+        <div class="ci-field">
+            <label for="ci-phone">Mobile number {% if ci.channel == 'email' %}<span class="ci-opt">(optional)</span>{% endif %}</label>
+            <input id="ci-phone" name="phone" type="tel" value="{{ ci.phone }}" autocomplete="tel" placeholder="+1 868 000 0000" maxlength="20">
+        </div>
+        <button type="submit" class="ci-btn">Continue</button>
+    </form>
+    <form method="post" action="{{ base }}/identify/reset" class="ci-alt">
+        <input type="hidden" name="token" value="{{ token }}">
+        Already have an account? <button type="submit" class="ci-link">Use a different email or phone</button>
+    </form>
+
+{% elseif ci.stage == 'code' %}
+    <h1 class="ci-title">Verify it's you</h1>
+    <p class="ci-lead">
+        {% if ci.channel == 'sms' %}We texted a 6-digit code to <strong>{{ ci.masked }}</strong>.{% else %}We emailed a 6-digit code to <strong>{{ ci.masked }}</strong>.{% endif %}
+        Enter it below to continue to payment.
+    </p>
+    {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ base }}/verify" autocomplete="off" novalidate>
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="ci-field">
+            <label for="ci-code">Verification code</label>
+            <input id="ci-code" name="code" class="ci-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="------" required autofocus>
+        </div>
+        <button type="submit" class="ci-btn">Verify and continue</button>
+    </form>
+    <form method="post" action="{{ base }}/identify/reset" class="ci-alt">
+        <input type="hidden" name="token" value="{{ token }}">
+        Didn't get a code? <button type="submit" class="ci-link">Use a different email or phone</button>
+    </form>
+
+{% else %}
+    <h1 class="ci-title">Your details</h1>
+    <p class="ci-lead">Enter your email address or mobile number. We'll send you a code to confirm it's you.</p>
+    {% if error %}<div class="ci-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ base }}/identify" autocomplete="on" novalidate>
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="ci-field">
+            <label for="ci-contact">Email or mobile number</label>
+            <input id="ci-contact" name="contact" value="{{ ci.prefill }}" autocomplete="username" placeholder="you@example.com or +1 868 000 0000" maxlength="190" required autofocus>
+        </div>
+        <button type="submit" class="ci-btn">Continue</button>
+    </form>
+{% endif %}
+<div class="ci-note">&#128274; Your details are encrypted and only shared with {{ merchant.name }}.</div>

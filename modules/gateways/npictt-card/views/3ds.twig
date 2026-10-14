@@ -1,0 +1,18 @@
+{% extends '@gateway_demopay/_layout.twig' %}
+
+{% block title %}3-D Secure verification{% endblock %}
+
+{% block content %}
+    <h1>Verify it's you</h1>
+    <p>Your bank sent a one-time passcode to the phone number on file for your {{ card.brand }} card ending in <strong>{{ card.last4 }}</strong>.</p>
+    <p class="dp-ref">Merchant: {{ merchant.name }} &middot; Amount: {{ currency }} {{ amount|number_format(2) }}</p>
+    <form method="post" action="{{ base }}/3ds" autocomplete="off">
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="dp-field">
+            <label for="otp">One-time passcode</label>
+            <input id="otp" name="otp" inputmode="numeric" maxlength="6" placeholder="6-digit code" required autofocus>
+        </div>
+        <button type="submit" class="dp-btn">Verify</button>
+    </form>
+    <a class="dp-cancel" href="{{ base }}/cancel">Cancel and return to {{ merchant.name }}</a>
+{% endblock %}

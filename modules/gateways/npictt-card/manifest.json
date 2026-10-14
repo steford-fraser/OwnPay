@@ -1,0 +1,31 @@
+{
+  "name": "NPICTT Payment Gateway - Card",
+  "slug": "npictt-card",
+  "version": "1.0.0",
+  "description": "Hosted card payments with 3-D Secure and refunds.",
+  "author": "NPICTT",
+  "type": "gateway",
+  "category": "global",
+  "icon": "assets/icon.svg",
+  "color": "#0003B1",
+  "entrypoint": "DemoPayGateway.php",
+  "namespace": "OwnPay\\Modules\\Gateways\\Demopay",
+  "capabilities": ["gateway"],
+  "requires": {
+    "core": ">=0.1.0",
+    "php": ">=8.1"
+  },
+  "routes": [
+    ["GET", "/checkout/card/{trx}/page", "page"],
+    ["POST", "/checkout/card/{trx}/identify", "identify"],
+    ["POST", "/checkout/card/{trx}/signup", "signup"],
+    ["POST", "/checkout/card/{trx}/verify", "verifyCode"],
+    ["POST", "/checkout/card/{trx}/identify/reset", "identifyReset"],
+    ["POST", "/checkout/card/{trx}/submit", "submit"],
+    ["GET", "/checkout/card/{trx}/3ds", "threeDs"],
+    ["POST", "/checkout/card/{trx}/3ds", "threeDs"],
+    ["POST", "/checkout/card/{trx}/return", "merchantResponse"],
+    ["GET", "/checkout/card/{trx}/cancel", "cancel"]
+  ],
+  "permissions": ["gateway.process"]
+}

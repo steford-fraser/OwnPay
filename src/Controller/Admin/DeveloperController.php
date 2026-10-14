@@ -192,7 +192,7 @@ final class DeveloperController
         $payload = json_encode([
             'event'     => 'webhook.test',
             'timestamp' => time(),
-            'data'      => ['message' => 'OwnPay webhook test event'],
+            'data'      => ['message' => 'Webhook test event'],
         ]);
 
         if (!is_string($payload)) {

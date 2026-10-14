@@ -1,0 +1,97 @@
+{% extends 'admin/layout/base.twig' %}
+{% block title %}Vouchers - {{ app_name }}{% endblock %}
+{% block content %}
+
+<div class="op-page-header">
+    <div>
+        <h1>Vouchers</h1>
+        <p class="op-page-subtitle">Prepaid vouchers shared by every brand. Payers enter one or more codes at checkout and the balance is deducted.</p>
+    </div>
+    <div class="op-header-actions">
+        {% for cur, total in outstanding %}
+        <span class="op-badge op-badge-success">{{ cur }} {{ total|number_format(2) }} outstanding</span>
+        {% endfor %}
+        <span class="op-text-muted op-text-sm">{{ vouchers|length }} vouchers</span>
+    </div>
+</div>
+
+{% if can_issue %}
+<div class="op-card op-mb-4">
+    <div class="op-card-body">
+        <form method="POST" action="/admin/gateways/vouchers/issue" class="op-advanced-filters">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <div class="op-filter-field">
+                <label class="op-text-sm op-text-muted" for="vp-count">How many</label>
+                <input id="vp-count" type="number" name="count" min="1" max="100" value="5" class="op-input op-input-sm" required>
+            </div>
+            <div class="op-filter-field">
+                <label class="op-text-sm op-text-muted" for="vp-amount">Amount each</label>
+                <input id="vp-amount" type="text" name="amount" inputmode="decimal" placeholder="100.00" class="op-input op-input-sm" required>
+            </div>
+            <div class="op-filter-field">
+                <label class="op-text-sm op-text-muted" for="vp-currency">Currency</label>
+                <input id="vp-currency" type="text" name="currency" value="TTD" maxlength="3" class="op-input op-input-sm" required>
+            </div>
+            <div class="op-filter-field">
+                <label class="op-text-sm op-text-muted" for="vp-expires">Expires (optional)</label>
+                <input id="vp-expires" type="date" name="expires_at" class="op-input op-input-sm">
+            </div>
+            <button type="submit" class="op-btn op-btn-primary">Issue vouchers</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="op-alert op-alert-info op-mb-4">Switch to "All Brands" to issue new vouchers.</div>
+{% endif %}
+
+<div class="op-card">
+    <div class="op-card-body op-p-0">
+        <div class="op-table-responsive">
+            <table class="op-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Currency</th>
+                        <th>Initial</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Used</th>
+                        <th>Expires</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vouchers %}
+                    {% set expired = v.expires_at and v.expires_at < now %}
+                    <tr>
+                        <td data-label="Code"><span class="op-text-monospace">{{ v.code }}</span></td>
+                        <td data-label="Currency">{{ v.currency }}</td>
+                        <td data-label="Initial">{{ v.initial_balance|number_format(2) }}</td>
+                        <td data-label="Balance"><strong>{{ v.balance|number_format(2) }}</strong></td>
+                        <td data-label="Status">
+                            {% if v.status != 'active' %}
+                            <span class="op-badge op-badge-danger">Void</span>
+                            {% elseif expired %}
+                            <span class="op-badge op-badge-warning">Expired</span>
+                            {% elseif v.balance <= 0 %}
+                            <span class="op-badge">Used up</span>
+                            {% else %}
+                            <span class="op-badge op-badge-success">Active</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Used">{{ v.used_count }}</td>
+                        <td data-label="Expires" class="op-text-muted op-text-sm">{{ v.expires_at ? v.expires_at|date('M d, Y') : '-' }}</td>
+                        <td data-label="Created" class="op-text-muted op-text-sm">{{ v.created_at|date('M d, Y H:i') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="op-empty">No vouchers yet. Issue some above or run <code>php bin/voucherpay-seed</code>.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

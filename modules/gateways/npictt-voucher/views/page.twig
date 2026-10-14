@@ -1,0 +1,77 @@
+{% extends '@gateway_voucherpay/_layout.twig' %}
+
+{% block styles %}
+        .vp-list { list-style: none; margin: 14px 0; padding: 0; }
+        .vp-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--vp-line); border-radius: 10px; margin-bottom: 8px; }
+        .vp-code { font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+        .vp-remove { background: none; border: 0; color: #b91c1c; font-size: 13px; cursor: pointer; }
+        .vp-due { display: flex; justify-content: space-between; font-weight: 600; padding: 12px 0; }
+        .vp-due.vp-zero { color: var(--vp-ok); }
+        .vp-apply { display: flex; gap: 8px; margin: 8px 0 16px; }
+        .vp-apply input { flex: 1; padding: 11px 12px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 8px; text-transform: uppercase; font-family: ui-monospace, Menlo, monospace; }
+        .vp-btn { padding: 12px 16px; font-size: 15px; font-weight: 600; color: #fff; background: var(--vp-accent); border: 0; border-radius: 8px; cursor: pointer; }
+        .vp-btn-alt { background: #0f172a; }
+        .vp-btn[disabled] { opacity: .45; cursor: not-allowed; }
+        .vp-pay { width: 100%; padding: 14px; font-size: 16px; }
+        .vp-msg { border-radius: 8px; padding: 10px 12px; font-size: 14px; margin: 14px 0; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .vp-msg.vp-err { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .vp-hint { margin-top: 16px; font-size: 12px; color: var(--vp-muted); border-top: 1px dashed var(--vp-line); padding-top: 12px; }
+{% endblock %}
+
+{% block content %}
+            {% if message %}<div class="vp-msg{{ is_error ? ' vp-err' : '' }}" role="status">{{ message }}</div>{% endif %}
+
+            {% if applied is not empty %}
+            <ul class="vp-list">
+                {% for a in applied %}
+                <li>
+                    <div>
+                        <div class="vp-code">{{ a.code }}</div>
+                        <div class="vp-sub">Balance {{ currency }} {{ a.balance|number_format(2) }} &middot; {{ currency }} {{ (a.balance - a.amount)|number_format(2) }} left after payment</div>
+                    </div>
+                    <div>
+                        <strong>- {{ currency }} {{ a.amount|number_format(2) }}</strong>
+                        <form method="post" action="{{ base }}/remove">
+                            <input type="hidden" name="token" value="{{ token }}">
+                            <input type="hidden" name="code" value="{{ a.code }}">
+                            <button type="submit" class="vp-remove">Remove</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <div class="vp-due{{ remaining == '0.00' ? ' vp-zero' : '' }}">
+                <span>{{ remaining == '0.00' ? 'Fully covered' : 'Still due' }}</span>
+                <span>{{ currency }} {{ remaining|number_format(2) }}</span>
+            </div>
+
+            {% if remaining != '0.00' and can_add %}
+            <form method="post" action="{{ base }}/apply" class="vp-apply" autocomplete="off">
+                <input type="hidden" name="token" value="{{ token }}">
+                <input name="code" placeholder="Enter voucher code" aria-label="Voucher code" required autofocus>
+                <button type="submit" class="vp-btn vp-btn-alt">Apply</button>
+            </form>
+            {% endif %}
+
+            <form method="post" action="{{ base }}/confirm" id="vp-confirm">
+                <input type="hidden" name="token" value="{{ token }}">
+                <button type="submit" class="vp-btn vp-pay"{{ remaining != '0.00' or applied is empty ? ' disabled' : '' }}>
+                    Pay {{ currency }} {{ amount|number_format(2) }}
+                </button>
+            </form>
+            <a class="vp-cancel" href="{{ base }}/cancel">Cancel and choose another payment method</a>
+
+            <div class="vp-hint">If a voucher's balance is lower than the amount due, its full balance is used and you can add another voucher for the rest.</div>
+{% endblock %}
+
+{% block scripts %}
+    <script nonce="{{ nonce }}">
+        document.getElementById('vp-confirm').addEventListener('submit', function () {
+            var btn = this.querySelector('button');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+        });
+    </script>
+{% endblock %}

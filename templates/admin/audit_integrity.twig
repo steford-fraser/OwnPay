@@ -26,7 +26,7 @@
     {% else %}
         <div class="op-alert op-alert-danger op-mt-4">
             <h4>🚨 CRITICAL ALERT: Database Tampering Detected!</h4>
-            <p>The cryptographic verification scan identified <strong>{{ compromised|length }} corrupted audit log entries</strong> where the stored SHA-256 HMAC checksum signature failed to validate. This indicates that one or more log rows were modified or deleted directly in the database, bypassing the OwnPay application layer.</p>
+            <p>The cryptographic verification scan identified <strong>{{ compromised|length }} corrupted audit log entries</strong> where the stored SHA-256 HMAC checksum signature failed to validate. This indicates that one or more log rows were modified or deleted directly in the database, bypassing the application layer.</p>
         </div>
 
         <div class="op-card op-mt-4">

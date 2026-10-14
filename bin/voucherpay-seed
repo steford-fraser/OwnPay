@@ -1,0 +1,84 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+/**
+ * Seeds demo vouchers for the VoucherPay gateway.
+ *
+ * Usage: php bin/voucherpay-seed [--count=N --amount=X --currency=TTD] [--dry-run]
+ *
+ * Always creates (or resets) the fixed codes NPICTT-50, NPICTT-100, NPICTT-500 and NPICTT-EXPIRED.
+ * With --count, also issues that many random vouchers. Creates the voucher tables if missing.
+ */
+
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "This script must be run from the command line.\n");
+    exit(1);
+}
+
+$root = dirname(__DIR__);
+chdir($root);
+require $root . '/vendor/autoload.php';
+require_once $root . '/modules/gateways/npictt-voucher/VoucherBalanceChanged.php';
+require_once $root . '/modules/gateways/npictt-voucher/VoucherStore.php';
+
+use OwnPay\Modules\Gateways\Voucherpay\VoucherStore;
+
+$opts = getopt('', ['count:', 'amount:', 'currency:', 'dry-run', 'help']);
+if (isset($opts['help'])) {
+    echo "Usage: php bin/voucherpay-seed [--count=N --amount=X --currency=TTD] [--dry-run]\n";
+    exit(0);
+}
+$dryRun   = isset($opts['dry-run']);
+$count    = isset($opts['count']) && is_string($opts['count']) ? (int) $opts['count'] : 0;
+$amount   = isset($opts['amount']) && is_string($opts['amount']) ? $opts['amount'] : '100';
+$currency = strtoupper(isset($opts['currency']) && is_string($opts['currency']) ? $opts['currency'] : 'TTD');
+
+if ($count < 0 || $count > 500 || !preg_match('/^\d{1,10}(\.\d{1,2})?$/', $amount) || !preg_match('/^[A-Z]{3}$/', $currency)) {
+    fwrite(STDERR, "Invalid --count (0-500), --amount or --currency.\n");
+    exit(1);
+}
+
+if (!file_exists($root . '/storage/.installed')) {
+    fwrite(STDERR, "OwnPay is not installed yet. Run the installer first.\n");
+    exit(1);
+}
+
+Dotenv\Dotenv::createImmutable($root)->safeLoad();
+$c = new OwnPay\Container();
+$c->instance(OwnPay\Container::class, $c);
+(require $root . '/config/services.php')($c);
+
+$db = $c->get(OwnPay\Core\Database::class);
+if (!$db instanceof OwnPay\Core\Database) {
+    fwrite(STDERR, "Failed to resolve the database.\n");
+    exit(1);
+}
+$store = new VoucherStore($db);
+if (!$dryRun) {
+    $store->ensureSchema();
+}
+$fixed = [
+    ['NPICTT-50', '50.00', null],
+    ['NPICTT-100', '100.00', null],
+    ['NPICTT-500', '500.00', null],
+    ['NPICTT-EXPIRED', '100.00', date('Y-m-d H:i:s', strtotime('-1 day'))],
+];
+
+echo ($dryRun ? '[dry-run] ' : '') . "Seeding VoucherPay demo vouchers\n";
+foreach ($fixed as [$code, $value, $expires]) {
+    if (!$dryRun) {
+        $store->upsert($code, 'TTD', $value, $expires);
+    }
+    printf("  %-16s TTD %10s%s\n", $code, $value, $expires !== null ? '  (expired)' : '');
+}
+
+if ($count > 0) {
+    $value = bcadd($amount, '0', 2);
+    $codes = $dryRun ? array_fill(0, $count, '(random)') : $store->issue($count, $currency, $value);
+    foreach ($codes as $code) {
+        printf("  %-16s %s %10s\n", $code, $currency, $value);
+    }
+}
+
+echo $dryRun ? "Dry run complete. No changes were written.\n" : "Done.\n";

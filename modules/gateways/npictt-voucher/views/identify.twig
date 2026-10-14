@@ -1,0 +1,12 @@
+{% extends '@gateway_voucherpay/_layout.twig' %}
+
+{% block styles %}
+        .vp-identify { padding-top: 18px; }
+{% endblock %}
+
+{% block content %}
+    <div class="vp-identify">
+        {% include 'checkout/partials/_customer_identify.twig' %}
+        <a class="vp-cancel" href="{{ base }}/cancel">Cancel and choose another payment method</a>
+    </div>
+{% endblock %}

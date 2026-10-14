@@ -1,0 +1,35 @@
+{
+  "name": "NPICTT Payment Gateway - Voucher",
+  "slug": "npictt-voucher",
+  "version": "1.0.0",
+  "description": "Prepaid voucher payments: payers enter one or more voucher codes and the balance is deducted.",
+  "author": "NPICTT",
+  "type": "gateway",
+  "category": "global",
+  "icon": "assets/icon.svg",
+  "color": "#0003B1",
+  "entrypoint": "VoucherPayGateway.php",
+  "namespace": "OwnPay\\Modules\\Gateways\\Voucherpay",
+  "capabilities": ["gateway", "dashboard"],
+  "requires": {
+    "core": ">=0.1.0",
+    "php": ">=8.1"
+  },
+  "admin_menu": [
+    { "label": "Vouchers", "url": "/admin/gateways/vouchers" }
+  ],
+  "routes": [
+    ["GET", "/checkout/voucher/{trx}/page", "page"],
+    ["POST", "/checkout/voucher/{trx}/identify", "identify"],
+    ["POST", "/checkout/voucher/{trx}/signup", "signup"],
+    ["POST", "/checkout/voucher/{trx}/verify", "verifyCode"],
+    ["POST", "/checkout/voucher/{trx}/identify/reset", "identifyReset"],
+    ["POST", "/checkout/voucher/{trx}/apply", "apply"],
+    ["POST", "/checkout/voucher/{trx}/remove", "remove"],
+    ["POST", "/checkout/voucher/{trx}/confirm", "confirm"],
+    ["GET", "/checkout/voucher/{trx}/cancel", "cancel"],
+    ["GET", "/admin/gateways/vouchers", "adminIndex", "admin"],
+    ["POST", "/admin/gateways/vouchers/issue", "adminIssue", "admin"]
+  ],
+  "permissions": ["gateway.process"]
+}

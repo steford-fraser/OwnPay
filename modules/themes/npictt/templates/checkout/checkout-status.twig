@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="robots" content="noindex,nofollow">
     {% set np_brand = brand ?? {} %}
-    {% set np_is_placeholder = (np_brand.name ?? '') in ['', 'OwnPay', 'Own Pay'] %}
+    {% set np_is_placeholder = (np_brand.name ?? '') in ['', 'OwnPay', 'Own Pay', 'NPICTT Pay'] %}
     <title>{{ status_label ?? (status|capitalize) }} — {{ np_is_placeholder ? 'NPICTT Pay' : np_brand.name }}</title>
     <link rel="icon" href="{{ (not np_is_placeholder and np_brand.favicon|default('')) ? np_brand.favicon : '/assets/themes/npictt/favicon-32.png' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">

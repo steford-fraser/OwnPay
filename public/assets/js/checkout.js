@@ -415,7 +415,7 @@
 
         var footerEl = document.getElementById("mpFooter");
         if (footerEl) {
-            footerEl.textContent = "Secured by " + (cfg.brandName || "OwnPay");
+            footerEl.textContent = "Secured by " + (cfg.brandName || "NPICTT");
         }
 
         var amountEl = document.getElementById("mpAmountValue");

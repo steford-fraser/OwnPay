@@ -3,7 +3,7 @@
   Child templates only pass `link`, so the brand is resolved from link.merchant_id.
 #}
 {% set np_brand = brand ?? ((link.merchant_id ?? 0) ? npictt_brand(link.merchant_id) : {}) %}
-{% set np_is_placeholder = (np_brand.name ?? '') in ['', 'OwnPay', 'Own Pay'] %}
+{% set np_is_placeholder = (np_brand.name ?? '') in ['', 'OwnPay', 'Own Pay', 'NPICTT Pay'] %}
 {% set np_name = np_is_placeholder ? setting('branding.site_name', 'NPICTT Pay') : np_brand.name %}
 <!DOCTYPE html>
 <html lang="en">

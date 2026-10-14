@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>NPICTT Payment Gateway</title>
+    <link rel="icon" href="/assets/themes/npictt/favicon-32.png">
+    <style>
+        :root { --vp-brand: {{ merchant.color }}; --vp-ink: #0f172a; --vp-muted: #64748b; --vp-line: #e2e8f0; --vp-accent: #0003B1; --vp-ok: #059669; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f1f5f9; color: var(--vp-ink); }
+        .vp-top { background: #fff; border-bottom: 3px solid #E4002B; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .vp-logo { display: flex; align-items: center; gap: 14px; }
+        .vp-logo img { height: 42px; width: auto; }
+        .vp-logo span { padding-left: 14px; border-left: 1px solid var(--vp-line); font-weight: 700; font-size: 16px; color: var(--vp-accent); }
+        .vp-secure { font-size: 12px; color: var(--vp-muted); }
+        .vp-merchant { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--vp-line); }
+        .vp-merchant img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; border: 1px solid var(--vp-line); }
+        @media (max-width: 560px) { .vp-logo span, .vp-secure { display: none; } }
+        .vp-wrap { max-width: 560px; margin: 28px auto; padding: 0 16px; }
+        .vp-card { background: #fff; border: 1px solid var(--vp-line); border-radius: 14px; padding: 24px; }
+        .vp-label { font-size: 12px; color: var(--vp-muted); text-transform: uppercase; letter-spacing: .06em; }
+        .vp-total { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 16px; border-bottom: 1px solid var(--vp-line); }
+        .vp-total .vp-amount { font-size: 28px; font-weight: 700; }
+        .vp-sub { font-size: 12px; color: var(--vp-muted); }
+        .vp-cancel { display: block; text-align: center; margin-top: 14px; font-size: 14px; color: var(--vp-muted); }
+        {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <header class="vp-top">
+        <div class="vp-logo"><img src="/assets/themes/npictt/logo.png" alt="NPICTT"><span>NPICTT Payment Gateway</span></div>
+        <div class="vp-secure">&#128274; Secure checkout</div>
+    </header>
+    <div class="vp-wrap">
+        <div class="vp-card">
+            <div class="vp-merchant">
+                {% if merchant.logo %}<img src="{{ merchant.logo }}" alt="">{% endif %}
+                <div>
+                    <div class="vp-label">Paying</div>
+                    <strong>{{ merchant.name }}</strong>
+                </div>
+            </div>
+            <div class="vp-total">
+                <div>
+                    <div class="vp-label">{{ label }}</div>
+                    <div class="vp-sub">Reference {{ trx }}</div>
+                </div>
+                <div class="vp-amount">{{ currency }} {{ amount|number_format(2) }}</div>
+            </div>
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

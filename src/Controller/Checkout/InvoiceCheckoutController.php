@@ -190,7 +190,7 @@ final class InvoiceCheckoutController
             'status'       => 'expired',
             'status_label' => $label,
             'txn'          => [],
-            'brand'        => ['name' => 'OwnPay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''],
+            'brand'        => ['name' => 'NPICTT Pay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''],
             'lang'         => [],
         ]);
     }

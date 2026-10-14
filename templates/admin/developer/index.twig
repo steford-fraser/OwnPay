@@ -9,10 +9,6 @@
         <h1>Developer Hub</h1>
         <p class="op-page-subtitle">Access API keys, endpoint reference docs, webhook configurations, and rate limits.</p>
     </div>
-    <a href="https://docs.ownpay.org" class="op-btn op-btn-outline" target="_blank" rel="external">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="op-mr-1"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        API Docs
-    </a>
 </div>
 
 <div class="op-tabs" id="dev-tabs">
@@ -386,7 +382,7 @@ if (!hash_equals($expected, $signature)) {
             <div class="op-modal-body">
                 <div class="op-form-group">
                     <label>Webhook URL *</label>
-                    <input type="url" name="url" id="webhook-url-field" class="op-input" placeholder="https://yourapp.com/ownpay/webhook" required>
+                    <input type="url" name="url" id="webhook-url-field" class="op-input" placeholder="https://yourapp.com/payments/webhook" required>
                     <small class="op-text-muted">Must be a secure (HTTPS) URL</small>
                 </div>
                 <div class="op-form-group">

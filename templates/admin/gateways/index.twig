@@ -72,7 +72,7 @@
          data-status="{{ gw.status }}"
          data-name="{{ gw.name|lower }}"
          data-slug="{{ gw.slug|lower }}"
-         data-desc="{{ gw.description|lower }}">
+         data-desc="{{ gw.description|replace({' for OwnPay': '', 'OwnPay': 'NPICTT'})|lower }}">
         <div class="op-gateway-logo">
             {% if gw.logo is defined and gw.logo %}
                 <img src="{{ gw.logo }}" alt="{{ gw.name }}" loading="lazy" class="op-gateway-logo-img">
@@ -86,7 +86,7 @@
                 <h4 class="op-m-0">{{ gw.name }}</h4>
                 <span class="op-badge op-badge-info">API</span>
             </div>
-            <p class="op-text-muted op-text-xs op-mb-2">{{ gw.description }}</p>
+            <p class="op-text-muted op-text-xs op-mb-2">{{ gw.description|replace({' for OwnPay': '', 'OwnPay': 'NPICTT'}) }}</p>
             <div class="op-flex op-items-center op-gap-1">
                 {% if gw.status == 'active' %}
                     <span class="op-badge op-badge-success">active</span>

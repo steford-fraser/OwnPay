@@ -1,0 +1,24 @@
+{% extends '@gateway_demopay/_layout.twig' %}
+
+{% block title %}Processing payment{% endblock %}
+
+{% block content %}
+    <div class="dp-center">
+        <div class="dp-spinner"></div>
+        <h1>Authorising your payment</h1>
+        <p class="dp-ref">{{ card.brand }} ending in {{ card.last4 }}</p>
+        <p class="dp-ref">You will be returned to {{ merchant.name }} automatically.</p>
+        <form method="post" action="{{ base }}/return" id="dp-return">
+            <input type="hidden" name="outcome" value="{{ outcome }}">
+            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="signature" value="{{ signature }}">
+            <noscript><button type="submit" class="dp-btn">Continue</button></noscript>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+    setTimeout(function () { document.getElementById('dp-return').submit(); }, {{ delay * 1000 }});
+</script>
+{% endblock %}

@@ -15,7 +15,7 @@
 {% set npictt_url = 'https://npictt.co.tt/' %}
 {% set cb_name = cb.name ?? '' %}
 {% set cb_logo = cb.logo ?? '' %}
-{% set is_ministry = cb_name != '' and cb_name not in ['OwnPay', 'Own Pay'] and cb_logo != '' and cb_logo != npictt_logo %}
+{% set is_ministry = cb_name != '' and cb_name not in ['OwnPay', 'Own Pay', 'NPICTT Pay'] and cb_logo != '' and cb_logo != npictt_logo %}
 {% set c1 = cb.color ?? '' %}
 {% if not (c1 matches '/^#[0-9a-fA-F]{6}$/') %}{% set c1 = '#0003B1' %}{% endif %}
 {% set c2 = cb.accent_color ?? '' %}
