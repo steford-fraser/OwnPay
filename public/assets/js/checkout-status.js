@@ -1,16 +1,9 @@
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. Back button handling
-    var backBtns = document.querySelectorAll(".op-back-btn");
-    backBtns.forEach(function(btn) {
-        btn.addEventListener("click", function(e) {
-            if (window.history.length > 1) {
-                e.preventDefault();
-                window.history.back();
-            }
-        });
-    });
+    // Try Again / return links use real hrefs (e.g. /checkout/{trx}). Do not call
+    // history.back() here: after a failed POST pay the previous history entry is often the
+    // POST response, and back() triggers Chrome's "Confirm Form Resubmission" / ERR_CACHE_MISS.
 
-    // 1b. Download Receipt - triggers the browser print dialog. Wired via a real event
+    // 1. Download Receipt - triggers the browser print dialog. Wired via a real event
     // listener (not a `javascript:` href) since the checkout CSP's script-src has no
     // 'unsafe-inline' and nonces don't cover javascript: URIs - a javascript: href is
     // silently blocked and never fires.
@@ -21,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function() {
         window.print();
     });
 
-    // 1c. Refresh Status - same javascript:-href CSP block as Download Receipt above, applied
+    // 2. Refresh Status - same javascript:-href CSP block as Download Receipt above, applied
     // to the pending/processing status page's manual refresh button.
     document.addEventListener("click", function (e) {
         var target = e.target.closest('[data-action="refresh-status"]');
@@ -30,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function() {
         window.location.reload();
     });
 
-    // 2. Autonomous handoff / countdown redirect handling
+    // 3. Autonomous handoff / countdown redirect handling
     var wrapper = document.getElementById("countdown-wrapper");
     if (wrapper) {
         var redirectUrl = wrapper.getAttribute("data-redirect-url");
@@ -105,7 +98,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // 3. Auto-refresh for pending/processing status pages
+    // 4. Auto-refresh for pending/processing status pages
     if (document.querySelector(".st-refresh-tip")) {
         setTimeout(function () {
             window.location.reload();

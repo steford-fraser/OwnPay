@@ -207,17 +207,56 @@ return static function (\OwnPay\Container $c): void {
             ensureString($paths['templates'] ?? '')
         ];
         $loader = new \Twig\Loader\FilesystemLoader($templatePaths);
-        // Add module theme paths for overrides
-        $themesDir = ensureString($paths['modules'] ?? '') . '/themes';
+        $modulesDir = ensureString($paths['modules'] ?? '');
+        $themesDir = $modulesDir . '/themes';
+
+        // Prepend active theme so same-named templates override core (matches TwigFactory).
+        $activeThemeSlug = null;
+        try {
+            if ($c->has(\OwnPay\Repository\SettingsRepository::class)) {
+                $settings = $c->get(\OwnPay\Repository\SettingsRepository::class);
+                if ($settings instanceof \OwnPay\Repository\SettingsRepository) {
+                    $dbTheme = $settings->get('appearance', 'active_theme', '');
+                    if (is_string($dbTheme) && $dbTheme !== '') {
+                        $activeThemeSlug = $dbTheme;
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            // Settings unavailable during early bootstrap
+        }
+        if ($activeThemeSlug === null) {
+            $envTheme = getenv('ACTIVE_THEME');
+            $activeThemeSlug = is_string($envTheme) && $envTheme !== '' ? $envTheme : 'own-pay';
+        }
+        if ($themesDir !== '' && is_dir($themesDir . '/' . $activeThemeSlug . '/templates')) {
+            $loader->prependPath($themesDir . '/' . $activeThemeSlug . '/templates');
+        } elseif ($themesDir !== '' && is_dir($themesDir . '/own-pay/templates')) {
+            $loader->prependPath($themesDir . '/own-pay/templates');
+        }
+
         if (is_dir($themesDir)) {
             foreach (glob($themesDir . '/*/templates') ?: [] as $themeTemplateDir) {
                 $themeName = basename(dirname($themeTemplateDir));
                 $loader->addPath($themeTemplateDir, $themeName);
             }
         }
+        $addonsDir = $modulesDir . '/addons';
+        if (is_dir($addonsDir)) {
+            foreach (glob($addonsDir . '/*/views') ?: [] as $addonViewsDir) {
+                $loader->addPath($addonViewsDir, basename(dirname($addonViewsDir)));
+            }
+        }
+        $gatewaysDir = $modulesDir . '/gateways';
+        if (is_dir($gatewaysDir)) {
+            foreach (glob($gatewaysDir . '/*/views') ?: [] as $gatewayViewsDir) {
+                $loader->addPath($gatewayViewsDir, 'gateway_' . basename(dirname($gatewayViewsDir)));
+            }
+        }
         $twig = new \Twig\Environment($loader, [
             'cache'       => ensureString($paths['cache'] ?? '') . '/twig',
-            'auto_reload' => (bool) ($appCfg['debug'] ?? false),
+            // Recompile when plugin/theme Twig sources change even with APP_DEBUG=false.
+            'auto_reload' => true,
             'strict_variables' => true,
             'autoescape'  => 'html',
         ]);

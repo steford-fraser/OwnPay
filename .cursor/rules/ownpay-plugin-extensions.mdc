@@ -1,0 +1,22 @@
+---
+description: OwnPay plugin/extension patterns from ownpay-docs — prefer modules over core edits
+globs: modules/**/*,config/hooks.php,src/Plugin/**/*
+alwaysApply: false
+---
+
+# OwnPay plugin extensions
+
+Extend OwnPay via plugins under `modules/{addons,gateways,themes}/`. Do not put brand/feature logic in `src/` unless a generic extension point is missing (then add a minimal hook, not domain code).
+
+## Docs
+
+Follow https://ownpay.org/docs/developer/plugins/overview and the addon/gateway/theme guides. Canonical hook names: in-repo `config/hooks.php`.
+
+## Rules
+
+1. **Tables**: only `op_plugin_{slug}_*`. Use `migrations/*.sql` (+ `.down.sql`). `uninstall()` drops tables and clears `plugin.{slug}` settings.
+2. **Sandbox**: no direct SQL on non-plugin `op_*` under plugin owner. Prefer metadata / plugin assignment tables. Use `EventManager::pushOwner('core')` only when reading/updating core rows is unavoidable.
+3. **Manifest**: `slug` = directory name; declare `capabilities`; admin routes use middleware `"admin"`; `admin_menu` needs `dashboard`.
+4. **Hooks**: register in `register()`; resolve services in `boot()`.
+5. **Money**: BCMath strings. **API errors**: `Response::apiError` / OwnPay `success`+`error` envelope. **Webhooks**: custom fields in `metadata`.
+6. **UI**: theme Twig overrides under `modules/themes/*/templates/` when possible; avoid editing core templates for brand work.

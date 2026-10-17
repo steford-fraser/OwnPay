@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment unavailable | {{ app_name|default('NPICTT Pay') }}</title>
+    <link rel="icon" href="/assets/themes/npictt/favicon-32.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --np-blue: #0003B1;
+            --np-blue-deep: #00027A;
+            --np-red: #E4002B;
+            --np-ink: #222222;
+            --np-text: #5f6470;
+            --np-muted: #8a8f99;
+            --np-line: #e6e8ee;
+            --np-soft: #f4f5f8;
+            --np-head: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --np-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--np-body); color: var(--np-text); background: #fff; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; }
+        a { color: inherit; text-decoration: none; }
+        img { max-width: 100%; display: block; }
+        .np-wrap { width: min(1200px, 100% - 48px); margin: 0 auto; }
+
+        .np-topbar { background: var(--np-blue); color: #fff; font-size: 13px; }
+        .np-topbar .np-wrap { display: flex; justify-content: flex-end; align-items: center; gap: 28px; min-height: 40px; }
+        .np-topbar a:hover { text-decoration: underline; }
+
+        .np-header { background: #fff; border-bottom: 1px solid var(--np-line); box-shadow: 0 2px 10px rgba(0, 3, 177, .04); }
+        .np-header .np-wrap { display: flex; align-items: center; justify-content: space-between; min-height: 88px; gap: 24px; }
+        .np-header-logo img { height: 64px; width: auto; }
+        .np-nav a { font-family: var(--np-head); font-weight: 700; color: var(--np-blue); font-size: 15px; }
+        .np-nav a:hover { color: var(--np-red); }
+
+        .np-main {
+            flex: 1;
+            background:
+                repeating-linear-gradient(90deg, #f6f7fa 0 120px, #eef0f5 120px 122px),
+                #f6f7fa;
+            display: flex;
+            align-items: center;
+            padding: 48px 0 72px;
+        }
+        .np-card {
+            width: min(560px, 100%);
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid var(--np-line);
+            border-radius: 8px;
+            box-shadow: 0 18px 40px rgba(0, 3, 177, .08);
+            padding: 40px 36px;
+            text-align: left;
+        }
+        .np-kicker { font-family: var(--np-head); color: var(--np-red); font-size: 18px; font-weight: 500; margin-bottom: 10px; }
+        .np-card h1 { font-family: var(--np-head); color: var(--np-blue); font-weight: 700; font-size: 28px; line-height: 1.2; letter-spacing: -.3px; margin-bottom: 14px; }
+        .np-card p { font-size: 16px; color: var(--np-text); margin-bottom: 12px; }
+        .np-card p:last-of-type { margin-bottom: 28px; }
+        .np-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .np-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: var(--np-head); font-weight: 600; font-size: 15px;
+            padding: 13px 24px; border-radius: 3px; border: 2px solid transparent;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+        .np-btn-blue { background: var(--np-blue); color: #fff; }
+        .np-btn-blue:hover { background: var(--np-blue-deep); }
+        .np-btn-ghost { border-color: var(--np-blue); color: var(--np-blue); background: #fff; }
+        .np-btn-ghost:hover { background: var(--np-blue); color: #fff; }
+
+        .np-footer {
+            background: var(--np-blue-deep); color: rgba(255,255,255,.75);
+            font-size: 13px; padding: 22px 0;
+        }
+        .np-footer .np-wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .np-footer strong { color: #fff; font-family: var(--np-head); }
+
+        @media (max-width: 640px) {
+            .np-topbar .np-addr { display: none; }
+            .np-header-logo img { height: 52px; }
+            .np-card { padding: 28px 22px; }
+            .np-card h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="np-topbar">
+        <div class="np-wrap">
+            <span class="np-addr">Port of Spain, Trinidad and Tobago</span>
+            <a href="https://npictt.co.tt/contact-us/" target="_blank" rel="noopener">Contact NPICTT</a>
+        </div>
+    </div>
+
+    <header class="np-header">
+        <div class="np-wrap">
+            <a href="/" class="np-header-logo" aria-label="{{ app_name|default('NPICTT Pay') }}">
+                <img src="/assets/themes/npictt/logo.png" alt="The National Payment &amp; Innovation Company of Trinidad and Tobago">
+            </a>
+            <nav class="np-nav">
+                <a href="/">Home</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="np-main">
+        <div class="np-wrap">
+            <div class="np-card" role="alert">
+                <div class="np-kicker">{{ app_name|default('NPICTT Pay') }}</div>
+                <h1>This payment is unavailable</h1>
+                <p>We’re unable to process this payment right now. Please try again later, or contact the organisation that sent you this payment link for help.</p>
+                <p>No payment has been taken.</p>
+                <div class="np-actions">
+                    <a href="/" class="np-btn np-btn-blue">Back to home</a>
+                    <a href="https://npictt.co.tt/contact-us/" class="np-btn np-btn-ghost" target="_blank" rel="noopener">Contact support</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="np-footer">
+        <div class="np-wrap">
+            <span>Secured by <strong>{{ app_name|default('NPICTT Pay') }}</strong></span>
+            <span>National Payment and Innovation Company of Trinidad and Tobago</span>
+        </div>
+    </footer>
+</body>
+</html>

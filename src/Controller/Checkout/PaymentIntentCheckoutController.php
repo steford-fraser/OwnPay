@@ -658,6 +658,17 @@ final class PaymentIntentCheckoutController
             if ($logger instanceof \OwnPay\Service\System\Logger) {
                 $logger->error('Atomic pay transaction setup failed: ' . $e->getMessage());
             }
+            // Plugin validation rejects: keep payer-facing copy generic (no internal config detail).
+            if ($e instanceof \InvalidArgumentException) {
+                $raw = $e->getMessage();
+                $msg = (is_string($raw) && $raw !== '' && !str_contains($raw, 'Treasury'))
+                    ? $raw
+                    : 'This payment is unavailable right now. Please try again later.';
+                if ($req->isAjax()) {
+                    return Response::json(['success' => false, 'error' => $msg], 422);
+                }
+                return $this->renderStatus($token, 'failed');
+            }
             if ($req->isAjax()) {
                 return Response::json(['success' => false, 'error' => 'Payment processing failed. Please try again.'], 500);
             }
@@ -1330,6 +1341,13 @@ final class PaymentIntentCheckoutController
             $logger = $this->c->get(\OwnPay\Service\System\Logger::class);
             if ($logger instanceof \OwnPay\Service\System\Logger) {
                 $logger->error('Atomic express pay transaction setup failed: ' . $e->getMessage());
+            }
+            if ($e instanceof \InvalidArgumentException) {
+                $raw = $e->getMessage();
+                $msg = (is_string($raw) && $raw !== '' && !str_contains($raw, 'Treasury'))
+                    ? $raw
+                    : 'This payment is unavailable right now. Please try again later.';
+                return Response::json(['success' => false, 'error' => $msg], 422);
             }
             return Response::json(['success' => false, 'error' => 'Payment processing failed. Please try again.'], 500);
         }

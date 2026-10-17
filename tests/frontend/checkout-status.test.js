@@ -70,6 +70,52 @@ describe('checkout-status.js Download Receipt button', () => {
  * javascript:-href CSP block as Download Receipt above (`<a href="javascript:location.reload()">`),
  * fixed via the identical data-action click-delegation pattern.
  */
+/**
+ * Regression: Try Again used history.back(), which after a failed POST pay resurfaces the
+ * POST response and triggers Chrome's "Confirm Form Resubmission" / ERR_CACHE_MISS.
+ * Links with a real href must navigate normally.
+ */
+describe('checkout-status.js Try Again button', () => {
+  let dom;
+  let window;
+  let document;
+
+  beforeEach(() => {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <div class="st-actions">
+          <a href="/checkout/OP-TEST123" class="st-btn op-back-btn">
+            <span class="st-btn-label">Try<br>Again</span>
+          </a>
+        </div>
+      </body>
+      </html>
+    `;
+    dom = new JSDOM(html, { url: 'http://localhost/checkout/OP-TEST123/status', runScripts: 'dangerously' });
+    window = dom.window;
+    document = window.document;
+    window.history.back = vi.fn();
+    const runScript = window['eval'];
+    runScript.call(window, statusJsCode);
+  });
+
+  afterEach(() => {
+    dom.window.close();
+  });
+
+  it('does not call history.back() when Try Again has a checkout href', () => {
+    const btn = document.querySelector('.op-back-btn');
+    expect(btn).not.toBeNull();
+    const event = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+    btn.dispatchEvent(event);
+
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+});
+
 describe('checkout-status.js Refresh Status button', () => {
   let dom;
   let window;

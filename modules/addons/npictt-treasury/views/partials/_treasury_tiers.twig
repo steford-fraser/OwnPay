@@ -1,0 +1,106 @@
+{# Cascading Head / Sub-Head / Item / Sub-Item selectors (catalog-backed; values = numbers). #}
+<div class="op-form-group" id="treasury-tiers" data-options-url="/admin/treasury-codes/options">
+    <div class="op-form-row">
+        <div class="op-form-group op-col-3">
+            <label for="treasury_head">Head</label>
+            <select name="head" id="treasury_head" class="op-input" required>
+                <option value="">—</option>
+            </select>
+        </div>
+        <div class="op-form-group op-col-3">
+            <label for="treasury_sub_head">Sub-Head</label>
+            <select name="sub_head" id="treasury_sub_head" class="op-input" required>
+                <option value="">—</option>
+            </select>
+        </div>
+        <div class="op-form-group op-col-3">
+            <label for="treasury_item">Item</label>
+            <select name="item" id="treasury_item" class="op-input" required>
+                <option value="">—</option>
+            </select>
+        </div>
+        <div class="op-form-group op-col-3">
+            <label for="treasury_sub_item">Sub-Item</label>
+            <select name="sub_item" id="treasury_sub_item" class="op-input" required>
+                <option value="">—</option>
+            </select>
+        </div>
+    </div>
+    {% set ts = treasury_selected|default({}) %}
+    <input type="hidden" name="treasury_code" id="treasury_code_full"
+           value="{{ ts.code_full|default('') }}">
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    var root = document.getElementById('treasury-tiers');
+    if (!root) return;
+    var url = root.getAttribute('data-options-url');
+    var sel = {
+        head: document.getElementById('treasury_head'),
+        sub_head: document.getElementById('treasury_sub_head'),
+        item: document.getElementById('treasury_item'),
+        sub_item: document.getElementById('treasury_sub_item')
+    };
+    var hidden = document.getElementById('treasury_code_full');
+    var initial = {
+        head: {{ ts.head|default('')|json_encode|raw }},
+        sub_head: {{ ts.sub_head|default('')|json_encode|raw }},
+        item: {{ ts.item|default('')|json_encode|raw }},
+        sub_item: {{ ts.sub_item|default('')|json_encode|raw }}
+    };
+    var codes = [];
+
+    function uniquePairs(list, codeKey, nameKeyName) {
+        var seen = {};
+        var out = [];
+        list.forEach(function (c) {
+            var code = c[codeKey];
+            if (!code || seen[code]) return;
+            seen[code] = true;
+            out.push({ code: code, name: c[nameKeyName] || '' });
+        });
+        return out;
+    }
+    function fill(el, pairs, selected) {
+        el.innerHTML = '<option value="">—</option>';
+        pairs.forEach(function (p) {
+            var o = document.createElement('option');
+            o.value = p.code;
+            o.textContent = p.name ? (p.code + ' — ' + p.name) : p.code;
+            if (selected && selected === p.code) o.selected = true;
+            el.appendChild(o);
+        });
+    }
+    function filtered() {
+        return codes.filter(function (c) {
+            if (sel.head.value && c.head !== sel.head.value) return false;
+            if (sel.sub_head.value && c.sub_head !== sel.sub_head.value) return false;
+            if (sel.item.value && c.item !== sel.item.value) return false;
+            return true;
+        });
+    }
+    function syncHidden() {
+        var h = sel.head.value, s = sel.sub_head.value, i = sel.item.value, si = sel.sub_item.value;
+        hidden.value = (h && s && i && si) ? (h + '/' + s + '/' + i + '/' + si) : '';
+    }
+    function refresh(level) {
+        if (level <= 0) fill(sel.head, uniquePairs(codes, 'head', 'head_name'), sel.head.value || initial.head);
+        if (level <= 1) fill(sel.sub_head, uniquePairs(filtered(), 'sub_head', 'sub_head_name'), level < 1 ? (sel.sub_head.value || initial.sub_head) : sel.sub_head.value);
+        if (level <= 2) fill(sel.item, uniquePairs(filtered(), 'item', 'item_name'), level < 2 ? (sel.item.value || initial.item) : sel.item.value);
+        if (level <= 3) fill(sel.sub_item, uniquePairs(filtered(), 'sub_item', 'sub_item_name'), level < 3 ? (sel.sub_item.value || initial.sub_item) : sel.sub_item.value);
+        syncHidden();
+    }
+    sel.head.addEventListener('change', function () { sel.sub_head.value = ''; sel.item.value = ''; sel.sub_item.value = ''; refresh(1); });
+    sel.sub_head.addEventListener('change', function () { sel.item.value = ''; sel.sub_item.value = ''; refresh(2); });
+    sel.item.addEventListener('change', function () { sel.sub_item.value = ''; refresh(3); });
+    sel.sub_item.addEventListener('change', syncHidden);
+
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (payload) {
+            codes = (payload && payload.data) ? payload.data : [];
+            refresh(0);
+        })
+        .catch(function () { /* catalog unavailable */ });
+})();
+</script>

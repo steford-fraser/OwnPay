@@ -1,0 +1,63 @@
+{% extends 'admin/layout/base.twig' %}
+{% block title %}Treasury Codes - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="op-page-header">
+    <div>
+        <h1>Treasury Codes</h1>
+        <p class="op-page-subtitle">Trinidad &amp; Tobago Estimates Chart of Accounts (Head / Sub-Head / Item / Sub-Item).</p>
+    </div>
+    <a href="/admin/treasury-codes/create" class="op-btn op-btn-primary">+ Add Code</a>
+</div>
+
+{% if unmapped_invoices is not empty %}
+<div class="op-card" style="border-color:#fecaca;margin-bottom:1rem;">
+    <div class="op-card-body">
+        <strong style="color:#991b1b;">Invoices blocked until a Treasury Code is assigned</strong>
+        <p style="margin:.5rem 0 0;color:#7f1d1d;">Edit each invoice and pick Head / Sub-Head / Item / Sub-Item. Payment link mapping status is shown on <a href="/admin/payment-links">Payment Links</a>.</p>
+        <ul>
+            {% for row in unmapped_invoices %}
+            <li><a href="/admin/invoices/{{ row.id }}">{{ row.label }}</a> (#{{ row.id }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<div class="op-card">
+    <div class="op-card-body" style="overflow-x:auto;">
+        <table class="op-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Head</th>
+                    <th>Sub-Head</th>
+                    <th>Item</th>
+                    <th>Sub-Item</th>
+                    <th>Status</th>
+                    <th style="width:1%;white-space:nowrap;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in codes %}
+                <tr>
+                    <td><code>{{ row.code_full }}</code></td>
+                    <td>{{ row.head }} — {{ row.head_name|default('') }}</td>
+                    <td>{{ row.sub_head }} — {{ row.sub_head_name|default('') }}</td>
+                    <td>{{ row.item }} — {{ row.item_name|default('') }}</td>
+                    <td>{{ row.sub_item }} — {{ row.sub_item_name|default('') }}</td>
+                    <td>{{ row.status|capitalize }}</td>
+                    <td style="white-space:nowrap;">
+                        <div style="display:inline-flex;gap:0.5rem;align-items:center;">
+                            <a href="/admin/treasury-codes/{{ row.id }}" class="op-btn op-btn-sm op-btn-outline">View</a>
+                            <a href="/admin/treasury-codes/{{ row.id }}/edit" class="op-btn op-btn-sm op-btn-outline">Edit</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">No treasury codes yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

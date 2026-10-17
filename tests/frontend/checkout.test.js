@@ -797,7 +797,7 @@ describe('checkout.js', () => {
       window.pickGW(card, 'mfs', 'bkash', 'bKash', 'manual');
       document.getElementById('mfsBtn').onclick();
 
-      expect(document.getElementById('mpFooter').textContent).toBe('Secured by OwnPay');
+      expect(document.getElementById('mpFooter').textContent).toBe('Secured by SkyPay');
     });
 
     // Regression: openManualPopup()'s non-converted-gateway branch unconditionally overwrote

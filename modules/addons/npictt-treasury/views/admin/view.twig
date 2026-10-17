@@ -1,0 +1,45 @@
+{% extends 'admin/layout/base.twig' %}
+{% block title %}View Treasury Code - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="op-page-header">
+    <div>
+        <h1>Treasury Code</h1>
+        <p class="op-page-subtitle"><code>{{ code.code_full }}</code></p>
+    </div>
+    <div class="op-page-actions">
+        <a href="/admin/treasury-codes/{{ code.id }}/edit" class="op-btn op-btn-primary">Edit</a>
+        <a href="/admin/treasury-codes" class="op-btn op-btn-outline">← Back</a>
+    </div>
+</div>
+
+<div class="op-card">
+    <div class="op-card-body">
+        <div class="op-form-row">
+            <div class="op-form-group op-col-3">
+                <label>Head</label>
+                <p class="op-input-static"><strong>{{ code.head }}</strong> — {{ code.head_name|default('') }}</p>
+            </div>
+            <div class="op-form-group op-col-3">
+                <label>Sub-Head</label>
+                <p class="op-input-static"><strong>{{ code.sub_head }}</strong> — {{ code.sub_head_name|default('') }}</p>
+            </div>
+            <div class="op-form-group op-col-3">
+                <label>Item</label>
+                <p class="op-input-static"><strong>{{ code.item }}</strong> — {{ code.item_name|default('') }}</p>
+            </div>
+            <div class="op-form-group op-col-3">
+                <label>Sub-Item</label>
+                <p class="op-input-static"><strong>{{ code.sub_item }}</strong> — {{ code.sub_item_name|default('') }}</p>
+            </div>
+        </div>
+        <div class="op-form-group">
+            <label>Label</label>
+            <p class="op-input-static">{{ code.label ?? '—' }}</p>
+        </div>
+        <div class="op-form-group">
+            <label>Status</label>
+            <p class="op-input-static">{{ code.status|capitalize }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

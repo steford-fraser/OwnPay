@@ -61,11 +61,31 @@ final class TransactionService
         $res = $this->events->applyFilter('payment.transaction.before_create', $data, $merchantId);
         $data = is_array($res) ? $res : $data;
 
+        // Generic plugin abort contract: filters cannot throw (EventManager swallows),
+        // so plugins set __reject to a string message to block creation.
+        if (isset($data['__reject'])) {
+            $msg = is_scalar($data['__reject']) ? (string) $data['__reject'] : 'Transaction rejected by plugin.';
+            throw new \InvalidArgumentException($msg !== '' ? $msg : 'Transaction rejected by plugin.');
+        }
+        // Private filter markers (leading underscore) are not persisted as columns.
+        $pluginMarks = [];
+        foreach ($data as $key => $value) {
+            if (is_string($key) && str_starts_with($key, '_') && $key !== '__reject') {
+                $pluginMarks[$key] = $value;
+                unset($data[$key]);
+            }
+        }
+        unset($data['__reject']);
+
         $repo = $this->transactions->forTenant($merchantId);
         $id = $repo->createTransaction($data);
         $transaction = $repo->findScoped((int) $id);
         if ($transaction === null) {
             throw new \RuntimeException('Failed to retrieve newly created transaction.');
+        }
+
+        if ($pluginMarks !== []) {
+            $transaction = array_merge($transaction, $pluginMarks);
         }
 
         $this->events->doAction('payment.transaction.created', $transaction);

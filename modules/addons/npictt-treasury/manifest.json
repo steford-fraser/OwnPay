@@ -1,0 +1,41 @@
+{
+  "name": "NPICTT Treasury Codes",
+  "slug": "npictt-treasury",
+  "version": "1.0.1",
+  "description": "Trinidad & Tobago 4-tier Treasury Code compliance: catalog, mandatory assignment on payments/links/invoices, metadata for webhooks.",
+  "author": "NPICTT",
+  "type": "addon",
+  "entrypoint": "Plugin.php",
+  "namespace": "OwnPay\\Modules\\Addons\\NpicttTreasury",
+  "capabilities": ["addon", "dashboard", "hooks", "db_read", "db_write"],
+  "requires": {
+    "core": ">=0.1.0",
+    "php": ">=8.1"
+  },
+  "admin_menu": [
+    { "label": "Treasury Codes", "url": "/admin/treasury-codes" }
+  ],
+  "routes": [
+    ["GET", "/admin/treasury-codes", "adminIndex", "admin"],
+    ["GET", "/admin/treasury-codes/options", "adminOptions", "admin"],
+    ["GET", "/admin/treasury-codes/create", "adminCreate", "admin"],
+    ["POST", "/admin/treasury-codes/create", "adminCreate", "admin"],
+    ["GET", "/admin/treasury-codes/{id}", "adminView", "admin"],
+    ["GET", "/admin/treasury-codes/{id}/edit", "adminEdit", "admin"],
+    ["POST", "/admin/treasury-codes/{id}/edit", "adminEdit", "admin"]
+  ],
+  "hooks": [
+    "system.middleware.pipeline",
+    "payment.intent.created",
+    "payment.transaction.before_create",
+    "payment.transaction.created",
+    "payment_link.created",
+    "payment_link.updated",
+    "invoice.created",
+    "invoice.updated",
+    "ledger.entry.created",
+    "gateway.capture.before",
+    "admin.template.resolve",
+    "admin.template.data"
+  ]
+}

@@ -78,7 +78,7 @@ final class BrandThemeService
                 'support_email'  => '',
                 'custom_css'     => '',
                 'custom_js'      => '',
-                'footer_text'    => 'Secured by OwnPay · 256-bit encryption',
+                'footer_text'    => 'Secured by SkyPay · 256-bit encryption',
                 'show_powered_by'=> true,
             ];
         }

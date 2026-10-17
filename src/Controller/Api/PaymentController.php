@@ -276,6 +276,11 @@ final class PaymentController
             if ($logger instanceof \OwnPay\Service\System\Logger) {
                 $logger->error('Payment initiation failed', ['error' => $e->getMessage(), 'merchant' => $mid]);
             }
+            if ($e instanceof \InvalidArgumentException) {
+                $msg = $e->getMessage() !== '' ? $e->getMessage() : 'Payment rejected.';
+                $code = str_contains($msg, 'Treasury') ? 'TREASURY_CODE_REQUIRED' : 'VALIDATION_FAILED';
+                return Response::apiError($code, $msg, str_contains($msg, 'Treasury') ? 'treasury_code' : null, 422);
+            }
             return Response::apiError('PAYMENT_PROCESSING_FAILED', 'Payment processing failed', null, 500);
         }
     }
