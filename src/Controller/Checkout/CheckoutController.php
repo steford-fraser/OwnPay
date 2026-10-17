@@ -351,7 +351,7 @@ final class CheckoutController
             $midVal = $txn['merchant_id'];
             $mid = (is_int($midVal) || is_string($midVal)) ? (int) $midVal : 0;
         }
-        $brand = $mid > 0 ? $this->loadBrand($mid) : ['name' => 'NPICTT Pay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''];
+        $brand = $mid > 0 ? $this->loadBrand($mid) : ['name' => 'OwnPay', 'logo' => '', 'color' => '#0D9488', 'support_email' => ''];
 
         // Retrieve dynamic currency symbols for status confirmation page.
         if (is_array($txn) && $this->c->has(\OwnPay\Service\Payment\CurrencyService::class)) {
@@ -442,7 +442,7 @@ final class CheckoutController
         // "OwnPay" only when the brand truly has no name (never an empty string in practice
         // since loadBrand()/BrandThemeService already fall back, but guarded defensively here).
         $brandNameVal = $brand['name'] ?? null;
-        $brandName = (is_string($brandNameVal) && $brandNameVal !== '') ? $brandNameVal : 'NPICTT Pay';
+        $brandName = (is_string($brandNameVal) && $brandNameVal !== '') ? $brandNameVal : 'OwnPay';
 
         return [
             'txnRef'           => $txnRef,

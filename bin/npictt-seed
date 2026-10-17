@@ -46,9 +46,11 @@ $c->instance(OwnPay\Container::class, $c);
 $db        = $c->get(OwnPay\Core\Database::class);
 $merchants = $c->get(OwnPay\Repository\MerchantRepository::class);
 $links     = $c->get(OwnPay\Service\Payment\PaymentLinkService::class);
+$settings  = $c->get(OwnPay\Repository\SettingsRepository::class);
 if (!$db instanceof OwnPay\Core\Database
     || !$merchants instanceof OwnPay\Repository\MerchantRepository
-    || !$links instanceof OwnPay\Service\Payment\PaymentLinkService) {
+    || !$links instanceof OwnPay\Service\Payment\PaymentLinkService
+    || !$settings instanceof OwnPay\Repository\SettingsRepository) {
     fwrite(STDERR, "Failed to resolve OwnPay services.\n");
     exit(1);
 }
@@ -122,6 +124,21 @@ if ($errors !== []) {
 }
 
 echo ($dryRun ? "[dry-run] " : '') . 'Seeding ' . count($ministries) . " ministry brand(s) from {$dataFile}\n";
+
+// Platform display name: pages fall back to "OwnPay" in core; set these so the UI shows NPICTT Pay.
+$platformName = 'NPICTT Pay';
+$platformSettings = [
+    ['general', 'app_name', $platformName],
+    ['general', 'mail_from_name', $platformName],
+    ['mail', 'from_name', $platformName],
+];
+if (!$dryRun) {
+    foreach ($platformSettings as [$group, $key, $value]) {
+        $settings->set($group, $key, $value);
+    }
+}
+printf("  %-7s platform settings: general.app_name, general.mail_from_name, mail.from_name = %s\n",
+    $dryRun ? 'would set' : 'set', $platformName);
 
 $summary = $db->transaction(function () use ($ministries, $defaults, $merchants, $links, $db, $dryRun): array {
     $rows = [];

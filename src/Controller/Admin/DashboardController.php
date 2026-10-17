@@ -739,7 +739,7 @@ final class DashboardController
             /** @var \OwnPay\Repository\SettingsRepository $settingsRepo */
             $settingsRepo = $this->c->get(\OwnPay\Repository\SettingsRepository::class);
             $appConfig = $this->c->get('config.app');
-            $defaultName = is_array($appConfig) && isset($appConfig['name']) && is_string($appConfig['name']) ? $appConfig['name'] : 'NPICTT Pay';
+            $defaultName = is_array($appConfig) && isset($appConfig['name']) && is_string($appConfig['name']) ? $appConfig['name'] : 'OwnPay';
 
             $settingsRepo->set('general', 'app_name', $defaultName);
             $settingsRepo->set('general', 'site_name', $defaultName);
@@ -888,11 +888,11 @@ final class DashboardController
         $data = $req->all();
         $providerVal = $data['provider'] ?? 'smtp';
         $fromEmailVal = $data['from_email'] ?? '';
-        $fromNameVal = $data['from_name'] ?? 'NPICTT Pay';
+        $fromNameVal = $data['from_name'] ?? 'OwnPay';
 
         $provider = \OwnPay\Service\System\InputSanitizer::string(is_string($providerVal) ? $providerVal : 'smtp');
         $fromEmail = \OwnPay\Service\System\InputSanitizer::email(is_string($fromEmailVal) ? $fromEmailVal : '');
-        $fromName = \OwnPay\Service\System\InputSanitizer::string(is_string($fromNameVal) ? $fromNameVal : 'NPICTT Pay');
+        $fromName = \OwnPay\Service\System\InputSanitizer::string(is_string($fromNameVal) ? $fromNameVal : 'OwnPay');
         
         $skip = ($data['skip'] ?? '0') === '1';
         
