@@ -77,7 +77,7 @@ final class TwoFactorSetupController
                 $this->userRepo->setTotpSecret($userId, $secret);
             }
             $configApp = $this->c->get('config.app');
-            $configAppName = is_array($configApp) && isset($configApp['name']) && is_string($configApp['name']) ? $configApp['name'] : 'NPICTT Pay';
+            $configAppName = is_array($configApp) && isset($configApp['name']) && is_string($configApp['name']) ? $configApp['name'] : 'OwnPay';
             $appName = rawurlencode($configAppName);
             $userEmail = is_string($user['email'] ?? null) ? $user['email'] : '';
             $email   = rawurlencode($userEmail);

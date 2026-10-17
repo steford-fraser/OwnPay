@@ -350,7 +350,7 @@ final class InvoiceService
         $merchantRow = $this->db->fetchOne("SELECT name FROM op_merchants WHERE id = :id", ['id' => $merchantId]);
         $invoice['merchant_name'] = ($merchantRow !== null && is_scalar($merchantRow['name'] ?? null))
             ? (string) $merchantRow['name']
-            : 'NPICTT Pay';
+            : 'OwnPay';
         $invoice['amount'] = $invoice['total'] ?? '0.00';
 
         $template = <<<HTML

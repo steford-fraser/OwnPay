@@ -75,7 +75,7 @@ final class CoreExtension extends AbstractExtension
         $class = 'op-powered-by' . ($extraClass ? ' ' . htmlspecialchars($extraClass, ENT_QUOTES) : '');
 
         return sprintf(
-            '<span class="%s" data-op-token="%s">Powered by NPICTT Pay v%s</span>',
+            '<span class="%s" data-op-token="%s">Powered by <a href="https://ownpay.org" target="_blank" rel="noopener">OwnPay</a> v%s</span>',
             $class,
             htmlspecialchars($token, ENT_QUOTES),
             htmlspecialchars($this->appVersion, ENT_QUOTES)

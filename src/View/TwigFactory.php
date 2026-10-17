@@ -101,7 +101,7 @@ final class TwigFactory
 
         $twig->addExtension(new TwigExtensions($container));
 
-        $appName = isset($config['name']) && is_string($config['name']) ? $config['name'] : 'NPICTT Pay';
+        $appName = isset($config['name']) && is_string($config['name']) ? $config['name'] : 'OwnPay';
         $appVersion = isset($config['version']) && is_string($config['version']) ? $config['version'] : Version::CURRENT;
 
         $twig->addGlobal('app_name', $appName);

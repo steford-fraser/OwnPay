@@ -48,7 +48,7 @@ abstract class BaseController
 
         // Inject global template vars
         $configApp = $this->container->get('config.app');
-        $data['app_name'] = (is_array($configApp) && isset($configApp['name']) && is_string($configApp['name'])) ? $configApp['name'] : 'NPICTT Pay';
+        $data['app_name'] = (is_array($configApp) && isset($configApp['name']) && is_string($configApp['name'])) ? $configApp['name'] : 'OwnPay';
         $data['app_version'] = (is_array($configApp) && isset($configApp['version']) && is_string($configApp['version'])) ? $configApp['version'] : Version::CURRENT;
         $data['csrf_token'] = \OwnPay\Security\SecurityHelpers::csrfToken();
         
