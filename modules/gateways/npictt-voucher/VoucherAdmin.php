@@ -8,6 +8,7 @@ use OwnPay\Controller\Admin\AdminPageTrait;
 use OwnPay\Http\Request;
 use OwnPay\Http\Response;
 use OwnPay\Service\Admin\AdminSession;
+use OwnPay\Service\System\PaginationService;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
@@ -38,21 +39,29 @@ final class VoucherAdmin
             $loader->addPath(__DIR__ . '/views', 'gateway_voucherpay');
         }
 
-        $vouchers = $this->store->listAll();
-        $outstanding = [];
-        foreach ($vouchers as $v) {
-            $expires = is_string($v['expires_at'] ?? null) ? strtotime($v['expires_at']) : false;
-            if (($v['status'] ?? '') !== 'active' || ($expires !== false && $expires < time())) {
-                continue;
-            }
-            $cur = is_string($v['currency'] ?? null) ? $v['currency'] : '';
-            $outstanding[$cur] = bcadd($outstanding[$cur] ?? '0', VoucherStore::money($v['balance'] ?? null), 2);
+        $qRaw = $request->query('q', '');
+        $statusRaw = $request->query('status', '');
+        $pageRaw = $request->query('page', '1');
+
+        $filters = [
+            'q' => is_scalar($qRaw) ? trim((string) $qRaw) : '',
+            'status' => is_scalar($statusRaw) ? trim((string) $statusRaw) : '',
+        ];
+        if (!in_array($filters['status'], ['active', 'used', 'expired', 'void'], true)) {
+            $filters['status'] = '';
         }
+
+        $page = is_numeric($pageRaw) ? max(1, (int) $pageRaw) : 1;
+        $total = $this->store->countFiltered($filters);
+        $pagination = PaginationService::calculate($page, 25, $total);
+        $vouchers = $this->store->listFiltered($filters, $pagination['per_page'], $pagination['offset']);
 
         return $this->renderAdminPage('@gateway_voucherpay/admin/index.twig', [
             'active_page' => 'vouchers',
             'vouchers'    => $vouchers,
-            'outstanding' => $outstanding,
+            'filters'     => $filters,
+            'pagination'  => $pagination,
+            'outstanding' => $this->store->outstandingBalances(),
             'can_issue'   => $this->isGlobalBrandView(),
             'now'         => date('Y-m-d H:i:s'),
         ]);

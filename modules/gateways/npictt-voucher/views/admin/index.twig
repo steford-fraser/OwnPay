@@ -11,7 +11,7 @@
         {% for cur, total in outstanding %}
         <span class="op-badge op-badge-success">{{ cur }} {{ total|number_format(2) }} outstanding</span>
         {% endfor %}
-        <span class="op-text-muted op-text-sm">{{ vouchers|length }} vouchers</span>
+        <span class="op-text-muted op-text-sm">{{ pagination.total_items ?? 0 }} vouchers</span>
     </div>
 </div>
 
@@ -43,6 +43,46 @@
 {% else %}
 <div class="op-alert op-alert-info op-mb-4">Switch to "All Brands" to issue new vouchers.</div>
 {% endif %}
+
+{# -- Status chips ------------------------------------------------ #}
+<div class="op-filter-chips-row op-mb-3">
+    {% set statuses = [
+        {key: '', label: 'All'},
+        {key: 'active', label: 'Active'},
+        {key: 'used', label: 'Used up'},
+        {key: 'expired', label: 'Expired'},
+        {key: 'void', label: 'Void'},
+    ] %}
+    {% for s in statuses %}
+    <a href="?status={{ s.key }}&q={{ filters.q|default('')|url_encode }}"
+       class="op-chip {{ (filters.status|default('')) == s.key ? 'op-chip-active' : '' }}
+              {% if s.key == 'active' %}op-chip-success{% elseif s.key == 'expired' %}op-chip-warning{% elseif s.key == 'void' or s.key == 'used' %}op-chip-danger{% endif %}">
+        {{ s.label }}
+    </a>
+    {% endfor %}
+</div>
+
+{# -- Search ------------------------------------------------------ #}
+<div class="op-card op-mb-4">
+    <div class="op-card-body">
+        <form method="GET" class="op-advanced-filters" id="voucher-filter-form">
+            <input type="hidden" name="status" value="{{ filters.status|default('') }}">
+            <div class="op-filter-field op-flex-1">
+                <div class="op-filter-search-wrap">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="search" name="q" value="{{ filters.q|default('') }}" placeholder="Search code or currency…" class="op-input op-input-sm op-search-input">
+                </div>
+            </div>
+            <button type="submit" class="op-filter-btn">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                Filter
+            </button>
+            {% if filters.q or filters.status %}
+            <a href="/admin/gateways/vouchers" class="op-filter-btn">✕ Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
 
 <div class="op-card">
     <div class="op-card-body op-p-0">
@@ -85,7 +125,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8" class="op-empty">No vouchers yet. Issue some above or run <code>php bin/voucherpay-seed</code>.</td>
+                        <td colspan="8" class="op-empty">No vouchers match the current filters.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -93,5 +133,16 @@
         </div>
     </div>
 </div>
+
+{% if pagination is defined and pagination.total_pages > 1 %}
+{% set qs = '' %}
+{% if filters.q is not empty %}{% set qs = qs ~ '&q=' ~ filters.q|url_encode %}{% endif %}
+{% if filters.status is not empty %}{% set qs = qs ~ '&status=' ~ filters.status|url_encode %}{% endif %}
+<nav class="op-pagination op-mt-4">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.page - 1 }}{{ qs }}" class="op-page-link">← Prev</a>{% endif %}
+    <span class="op-page-info">Page {{ pagination.page }} of {{ pagination.total_pages }} ({{ pagination.total_items }} total)</span>
+    {% if pagination.has_next %}<a href="?page={{ pagination.page + 1 }}{{ qs }}" class="op-page-link">Next →</a>{% endif %}
+</nav>
+{% endif %}
 
 {% endblock %}

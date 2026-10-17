@@ -251,4 +251,94 @@ final class VoucherStore
              ORDER BY v.created_at DESC, v.id DESC'
         );
     }
+
+    /**
+     * Active, non-expired balance totals by currency (whole pool, not page-scoped).
+     *
+     * @return array<string, string> currency => amount
+     */
+    public function outstandingBalances(): array
+    {
+        $rows = $this->db->fetchAll(
+            "SELECT currency, COALESCE(SUM(balance), 0) AS total
+             FROM op_plugin_voucherpay_vouchers
+             WHERE status = 'active'
+               AND balance > 0
+               AND (expires_at IS NULL OR expires_at > NOW())
+             GROUP BY currency
+             ORDER BY currency"
+        );
+        $out = [];
+        foreach ($rows as $row) {
+            $cur = is_string($row['currency'] ?? null) ? $row['currency'] : '';
+            if ($cur === '') {
+                continue;
+            }
+            $out[$cur] = self::money($row['total'] ?? null);
+        }
+        return $out;
+    }
+
+    /**
+     * @param array{q?: string, status?: string} $filters
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function filterClause(array $filters): array
+    {
+        $sql = '';
+        $params = [];
+
+        $q = is_string($filters['q'] ?? null) ? trim($filters['q']) : '';
+        if ($q !== '') {
+            $like = '%' . $q . '%';
+            $sql .= ' AND (v.code LIKE :q1 OR v.currency LIKE :q2)';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+        }
+
+        $status = is_string($filters['status'] ?? null) ? trim($filters['status']) : '';
+        $sql .= match ($status) {
+            'active' => " AND v.status = 'active' AND v.balance > 0 AND (v.expires_at IS NULL OR v.expires_at > NOW())",
+            'used' => " AND v.status = 'active' AND v.balance <= 0",
+            'expired' => " AND v.status = 'active' AND v.expires_at IS NOT NULL AND v.expires_at <= NOW()",
+            'void' => " AND v.status <> 'active'",
+            default => '',
+        };
+
+        return [$sql, $params];
+    }
+
+    /**
+     * @param array{q?: string, status?: string} $filters
+     */
+    public function countFiltered(array $filters): int
+    {
+        [$where, $params] = $this->filterClause($filters);
+        $row = $this->db->fetchOne(
+            'SELECT COUNT(*) AS c FROM op_plugin_voucherpay_vouchers v WHERE 1=1' . $where,
+            $params
+        );
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * @param array{q?: string, status?: string} $filters
+     * @return list<array<string, mixed>>
+     */
+    public function listFiltered(array $filters, int $limit, int $offset): array
+    {
+        [$where, $params] = $this->filterClause($filters);
+        $params['lim'] = max(1, min($limit, 200));
+        $params['off'] = max(0, $offset);
+        return $this->db->fetchAll(
+            'SELECT v.*, COUNT(r.id) AS used_count
+             FROM op_plugin_voucherpay_vouchers v
+             LEFT JOIN op_plugin_voucherpay_redemptions r ON r.voucher_id = v.id
+             WHERE 1=1' . $where . '
+             GROUP BY v.id
+             ORDER BY v.created_at DESC, v.id DESC
+             LIMIT :lim OFFSET :off',
+            $params
+        );
+    }
 }
