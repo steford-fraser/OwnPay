@@ -575,6 +575,8 @@ final class Plugin implements PluginInterface
             'admin/payment-links/edit.twig' => '@npictt-treasury/admin/payment-links-edit.twig',
             'admin/payment-links/index.twig' => '@npictt-treasury/admin/payment-links-index.twig',
             'admin/invoices/edit.twig' => '@npictt-treasury/admin/invoices-edit.twig',
+            'admin/transactions/index.twig' => '@npictt-treasury/admin/transactions-index.twig',
+            'admin/transactions/edit.twig' => '@npictt-treasury/admin/transactions-edit.twig',
             default => $template,
         };
     }
@@ -589,6 +591,7 @@ final class Plugin implements PluginInterface
         $tpl = is_string($template) ? $template : '';
         $isLink = str_contains($tpl, 'payment-links');
         $isInvoice = str_contains($tpl, 'invoices');
+        $isTxn = str_contains($tpl, 'transactions');
         $isEdit = str_contains($tpl, 'edit');
         $isIndex = str_contains($tpl, 'index');
 
@@ -618,6 +621,16 @@ final class Plugin implements PluginInterface
             return $data;
         }
 
+        if ($isTxn && $isIndex && isset($data['transactions']) && is_array($data['transactions'])) {
+            $data['transactions'] = $this->enrichTransactionRows($data['transactions']);
+            return $data;
+        }
+
+        if ($isTxn && $isEdit && isset($data['txn']) && is_array($data['txn'])) {
+            $data['txn'] = $this->enrichTransactionDetail($data['txn']);
+            return $data;
+        }
+
         if (!$isEdit || (!$isLink && !$isInvoice)) {
             return $data;
         }
@@ -639,6 +652,86 @@ final class Plugin implements PluginInterface
         }
 
         return $data;
+    }
+
+    /**
+     * @param list<mixed> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function enrichTransactionRows(array $rows): array
+    {
+        $ids = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $id = (int) ($row['id'] ?? 0);
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        $map = $this->assignments()?->mapForEntities('transaction', $ids) ?? [];
+        $enriched = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            $assigned = $map[$id] ?? null;
+            $code = is_array($assigned) ? (string) ($assigned['code_full'] ?? '') : '';
+            if ($code === '') {
+                $code = $this->treasuryCodeFromMeta($row['metadata'] ?? null);
+            }
+            $row['treasury_code'] = $code;
+            $row['treasury_status'] = $code !== '' ? 'mapped' : 'missing';
+            $enriched[] = $row;
+        }
+        return $enriched;
+    }
+
+    /**
+     * @param array<string, mixed> $txn
+     * @return array<string, mixed>
+     */
+    private function enrichTransactionDetail(array $txn): array
+    {
+        $id = (int) ($txn['id'] ?? 0);
+        $assigned = $id > 0 ? ($this->assignments()?->find('transaction', $id) ?? null) : null;
+        $code = is_array($assigned) ? (string) ($assigned['code_full'] ?? '') : '';
+        if ($code === '') {
+            $code = $this->treasuryCodeFromMeta($txn['metadata'] ?? null);
+        }
+        $txn['treasury_code'] = $code;
+        $txn['treasury_status'] = $code !== '' ? 'mapped' : 'missing';
+        $txn['treasury_label'] = '';
+        if ($code !== '') {
+            $catalog = $this->codes()?->findByCodeFull($code);
+            if (is_array($catalog)) {
+                $label = is_string($catalog['label'] ?? null) ? $catalog['label'] : '';
+                if ($label === '') {
+                    $parts = array_filter([
+                        is_string($catalog['head_name'] ?? null) ? $catalog['head_name'] : '',
+                        is_string($catalog['sub_head_name'] ?? null) ? $catalog['sub_head_name'] : '',
+                        is_string($catalog['item_name'] ?? null) ? $catalog['item_name'] : '',
+                        is_string($catalog['sub_item_name'] ?? null) ? $catalog['sub_item_name'] : '',
+                    ], static fn (string $p): bool => $p !== '');
+                    $label = implode(' · ', $parts);
+                }
+                $txn['treasury_label'] = $label;
+            }
+        }
+        return $txn;
+    }
+
+    private function treasuryCodeFromMeta(mixed $raw): string
+    {
+        $meta = $this->decodeMeta($raw);
+        $code = $meta['treasury_code'] ?? null;
+        if (is_string($code) && $code !== '') {
+            return $code;
+        }
+        $nested = is_array($meta['treasury'] ?? null) ? $meta['treasury'] : [];
+        $nestedCode = $nested['code_full'] ?? null;
+        return is_string($nestedCode) ? $nestedCode : '';
     }
 
     // --- internals ---

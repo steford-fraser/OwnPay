@@ -50,16 +50,22 @@ final class TreasuryCodeRepository
         );
     }
 
-    public function isActive(string $codeFull, ?int $merchantId = null): bool
+    /** @return array<string, mixed>|null */
+    public function findByCodeFull(string $codeFull, ?int $merchantId = null): ?array
     {
-        $row = $this->db->fetchOne(
-            'SELECT id FROM op_plugin_npictt_treasury_codes
+        return $this->db->fetchOne(
+            'SELECT * FROM op_plugin_npictt_treasury_codes
              WHERE code_full = :code AND status = \'active\'
                AND (merchant_id IS NULL OR merchant_id = :mid)
+             ORDER BY merchant_id IS NULL ASC
              LIMIT 1',
             ['code' => $codeFull, 'mid' => $merchantId ?? 0]
         );
-        return $row !== null;
+    }
+
+    public function isActive(string $codeFull, ?int $merchantId = null): bool
+    {
+        return $this->findByCodeFull($codeFull, $merchantId) !== null;
     }
 
     /**
