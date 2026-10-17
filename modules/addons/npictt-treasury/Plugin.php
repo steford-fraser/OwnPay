@@ -31,7 +31,7 @@ final class Plugin implements PluginInterface
         return [
             'name' => 'NPICTT Treasury Codes',
             'slug' => 'npictt-treasury',
-            'version' => '1.0.1',
+            'version' => '1.1.0',
             'description' => '4-tier Trinidad Treasury Code compliance for payments, links, and invoices.',
             'author' => 'NPICTT',
             'type' => 'addon',
@@ -194,6 +194,8 @@ final class Plugin implements PluginInterface
 
         $this->migrateCatalogColumns($db);
         $this->seedCatalog($db);
+        $this->seedPaymentLinkAssignments($db);
+        $this->seedInvoiceAssignments($db);
     }
 
     /** Add tier name fields and CoA column widths on existing installs. */
@@ -252,81 +254,92 @@ final class Plugin implements PluginInterface
 
     /**
      * Idempotent T&T Estimates Chart of Accounts seed (platform-wide).
+     * Heads: Appropriation FY 2025. Sub-Items: Estimates CoA Goods and Services.
+     * Skips work when the platform catalog already has the expected row count.
      */
     private function seedCatalog(Database $db): void
     {
+        $seeds = TreasuryCatalogSeed::catalogRows();
+        $expected = count($seeds);
+        $countRow = $db->fetchOne(
+            'SELECT COUNT(*) AS c FROM op_plugin_npictt_treasury_codes WHERE merchant_id IS NULL'
+        );
+        $have = (int) ($countRow['c'] ?? 0);
+        if ($have >= $expected) {
+            return;
+        }
+
         $repo = new TreasuryCodeRepository($db);
-
-        /** @var list<array{head: string, sub_head: string, item: string, sub_item: string, code_full: string, head_name: string, sub_head_name: string, item_name: string, sub_item_name: string}> $seeds */
-        $seeds = [
-            [
-                'head' => '18', 'sub_head' => '02', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '18/02/001/01',
-                'head_name' => 'Ministry of Finance',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Travelling and Subsistence',
-            ],
-            [
-                'head' => '18', 'sub_head' => '02', 'item' => '001', 'sub_item' => '10',
-                'code_full' => '18/02/001/10',
-                'head_name' => 'Ministry of Finance',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Office Stationery and Supplies',
-            ],
-            [
-                'head' => '18', 'sub_head' => '01', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '18/01/001/01',
-                'head_name' => 'Ministry of Finance',
-                'sub_head_name' => 'Personnel Expenditure',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Salaries and Cost of Living Allowance',
-            ],
-            [
-                'head' => '26', 'sub_head' => '02', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '26/02/001/01',
-                'head_name' => 'Ministry of Education',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Travelling and Subsistence',
-            ],
-            [
-                'head' => '26', 'sub_head' => '02', 'item' => '001', 'sub_item' => '05',
-                'code_full' => '26/02/001/05',
-                'head_name' => 'Ministry of Education',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Telephones',
-            ],
-            [
-                'head' => '28', 'sub_head' => '02', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '28/02/001/01',
-                'head_name' => 'Ministry of Health',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Travelling and Subsistence',
-            ],
-            [
-                'head' => '22', 'sub_head' => '02', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '22/02/001/01',
-                'head_name' => 'Ministry of National Security',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Travelling and Subsistence',
-            ],
-            [
-                'head' => '43', 'sub_head' => '02', 'item' => '001', 'sub_item' => '01',
-                'code_full' => '43/02/001/01',
-                'head_name' => 'Ministry of Works and Transport',
-                'sub_head_name' => 'Goods and Services',
-                'item_name' => 'General Administration',
-                'sub_item_name' => 'Travelling and Subsistence',
-            ],
-        ];
-
         foreach ($seeds as $seed) {
             $repo->upsertPlatform($seed);
+        }
+    }
+
+    /**
+     * Assign Sub-Item 23 (Fees) under each ministry Head to existing payment links.
+     * Runs with core owner so we can read op_payment_links.
+     */
+    private function seedPaymentLinkAssignments(Database $db): void
+    {
+        $this->seedEntityFeeAssignments($db, 'payment_link', 'op_payment_links', "status = 'active'");
+    }
+
+    /**
+     * Assign Sub-Item 23 (Fees) to existing open invoices (not cancelled/paid).
+     */
+    private function seedInvoiceAssignments(Database $db): void
+    {
+        $this->seedEntityFeeAssignments(
+            $db,
+            'invoice',
+            'op_invoices',
+            "status NOT IN ('cancelled','paid')"
+        );
+    }
+
+    private function seedEntityFeeAssignments(
+        Database $db,
+        string $entityType,
+        string $table,
+        string $where,
+    ): void {
+        $map = TreasuryCatalogSeed::paymentLinkHeadByMerchant();
+        if ($map === []) {
+            return;
+        }
+        if (!in_array($table, ['op_payment_links', 'op_invoices'], true)) {
+            return;
+        }
+
+        $events = $this->events();
+        $events?->pushOwner('core');
+        try {
+            $rows = $db->fetchAll(
+                "SELECT id, merchant_id FROM {$table} WHERE {$where} ORDER BY id"
+            );
+        } finally {
+            $events?->popOwner();
+        }
+
+        $assignments = new TreasuryAssignmentRepository($db);
+        foreach ($rows as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            $mid = (int) ($row['merchant_id'] ?? 0);
+            if ($id <= 0 || $mid <= 0 || !isset($map[$mid])) {
+                continue;
+            }
+            $codeFull = TreasuryCatalogSeed::feeCollectionCodeForHead($map[$mid]);
+            $parts = explode('/', $codeFull);
+            if (count($parts) !== 4) {
+                continue;
+            }
+            $assignments->upsert($mid, $entityType, $id, [
+                'head' => $parts[0],
+                'sub_head' => $parts[1],
+                'item' => $parts[2],
+                'sub_item' => $parts[3],
+                'code_full' => $codeFull,
+            ]);
         }
     }
 
@@ -575,6 +588,7 @@ final class Plugin implements PluginInterface
             'admin/payment-links/edit.twig' => '@npictt-treasury/admin/payment-links-edit.twig',
             'admin/payment-links/index.twig' => '@npictt-treasury/admin/payment-links-index.twig',
             'admin/invoices/edit.twig' => '@npictt-treasury/admin/invoices-edit.twig',
+            'admin/invoices/index.twig' => '@npictt-treasury/admin/invoices-index.twig',
             'admin/transactions/index.twig' => '@npictt-treasury/admin/transactions-index.twig',
             'admin/transactions/edit.twig' => '@npictt-treasury/admin/transactions-edit.twig',
             default => $template,
@@ -596,28 +610,12 @@ final class Plugin implements PluginInterface
         $isIndex = str_contains($tpl, 'index');
 
         if ($isLink && $isIndex && isset($data['payment_links']) && is_array($data['payment_links'])) {
-            $ids = [];
-            foreach ($data['payment_links'] as $row) {
-                if (is_array($row)) {
-                    $id = (int) ($row['id'] ?? 0);
-                    if ($id > 0) {
-                        $ids[] = $id;
-                    }
-                }
-            }
-            $map = $this->assignments()?->mapForEntities('payment_link', $ids) ?? [];
-            $enriched = [];
-            foreach ($data['payment_links'] as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                $id = (int) ($row['id'] ?? 0);
-                $assigned = $map[$id] ?? null;
-                $row['treasury_status'] = $assigned !== null ? 'mapped' : 'missing';
-                $row['treasury_code'] = is_array($assigned) ? (string) ($assigned['code_full'] ?? '') : '';
-                $enriched[] = $row;
-            }
-            $data['payment_links'] = $enriched;
+            $data['payment_links'] = $this->enrichEntityRows($data['payment_links'], 'payment_link');
+            return $data;
+        }
+
+        if ($isInvoice && $isIndex && isset($data['invoices']) && is_array($data['invoices'])) {
+            $data['invoices'] = $this->enrichEntityRows($data['invoices'], 'invoice');
             return $data;
         }
 
@@ -637,6 +635,7 @@ final class Plugin implements PluginInterface
 
         $data['treasury_codes'] = $this->codes()?->listActiveOptions() ?? [];
         $data['treasury_selected'] = [];
+        $data['treasury_status'] = 'missing';
 
         if ($isLink && isset($data['link']) && is_array($data['link'])) {
             $id = (int) ($data['link']['id'] ?? 0);
@@ -650,8 +649,41 @@ final class Plugin implements PluginInterface
                 $data['treasury_selected'] = $this->assignments()?->find('invoice', $id) ?? [];
             }
         }
+        if (is_array($data['treasury_selected']) && ($data['treasury_selected']['code_full'] ?? '') !== '') {
+            $data['treasury_status'] = 'mapped';
+        }
 
         return $data;
+    }
+
+    /**
+     * @param list<mixed> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function enrichEntityRows(array $rows, string $entityType): array
+    {
+        $ids = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $id = (int) ($row['id'] ?? 0);
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        $map = $this->assignments()?->mapForEntities($entityType, $ids) ?? [];
+        $enriched = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            $assigned = $map[$id] ?? null;
+            $row['treasury_status'] = $assigned !== null ? 'mapped' : 'missing';
+            $row['treasury_code'] = is_array($assigned) ? (string) ($assigned['code_full'] ?? '') : '';
+            $enriched[] = $row;
+        }
+        return $enriched;
     }
 
     /**

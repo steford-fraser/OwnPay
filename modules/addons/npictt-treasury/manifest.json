@@ -1,7 +1,7 @@
 {
   "name": "NPICTT Treasury Codes",
   "slug": "npictt-treasury",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Trinidad & Tobago 4-tier Treasury Code compliance: catalog, mandatory assignment on payments/links/invoices, metadata for webhooks.",
   "author": "NPICTT",
   "type": "addon",

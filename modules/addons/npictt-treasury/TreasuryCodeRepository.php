@@ -35,6 +35,81 @@ final class TreasuryCodeRepository
         return $this->db->fetchAll($sql, $params);
     }
 
+    /**
+     * @param array{q?: string, status?: string, head?: string} $filters
+     * @return array{0: string, 1: array<string, mixed>} SQL WHERE clause (with leading AND…) and bind params
+     */
+    private function filterClause(array $filters): array
+    {
+        $sql = '';
+        $params = [];
+
+        $status = is_string($filters['status'] ?? null) ? trim($filters['status']) : '';
+        if ($status === 'active' || $status === 'inactive') {
+            $sql .= ' AND status = :st';
+            $params['st'] = $status;
+        }
+
+        $head = is_string($filters['head'] ?? null) ? trim($filters['head']) : '';
+        if ($head !== '' && preg_match('/^\d{1,2}$/', $head) === 1) {
+            $sql .= ' AND head = :head';
+            $params['head'] = sprintf('%02d', (int) $head);
+        }
+
+        $q = is_string($filters['q'] ?? null) ? trim($filters['q']) : '';
+        if ($q !== '') {
+            // Distinct bind names: PDO/MySQL does not allow reusing one named parameter.
+            $like = '%' . $q . '%';
+            $sql .= ' AND (
+                code_full LIKE :q1
+                OR head LIKE :q2
+                OR sub_head LIKE :q3
+                OR item LIKE :q4
+                OR sub_item LIKE :q5
+                OR head_name LIKE :q6
+                OR sub_head_name LIKE :q7
+                OR item_name LIKE :q8
+                OR sub_item_name LIKE :q9
+                OR COALESCE(label, \'\') LIKE :q10
+            )';
+            foreach (range(1, 10) as $i) {
+                $params['q' . $i] = $like;
+            }
+        }
+
+        return [$sql, $params];
+    }
+
+    /**
+     * @param array{q?: string, status?: string, head?: string} $filters
+     */
+    public function countFiltered(array $filters): int
+    {
+        [$where, $params] = $this->filterClause($filters);
+        $row = $this->db->fetchOne(
+            'SELECT COUNT(*) AS c FROM op_plugin_npictt_treasury_codes WHERE 1=1' . $where,
+            $params
+        );
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * @param array{q?: string, status?: string, head?: string} $filters
+     * @return list<array<string, mixed>>
+     */
+    public function listFiltered(array $filters, int $limit, int $offset): array
+    {
+        [$where, $params] = $this->filterClause($filters);
+        $params['lim'] = max(1, min($limit, 200));
+        $params['off'] = max(0, $offset);
+        return $this->db->fetchAll(
+            'SELECT * FROM op_plugin_npictt_treasury_codes WHERE 1=1' . $where
+            . ' ORDER BY head, sub_head, item, sub_item
+               LIMIT :lim OFFSET :off',
+            $params
+        );
+    }
+
     /** @return list<array<string, mixed>> */
     public function listActiveOptions(?int $merchantId = null): array
     {

@@ -6,58 +6,113 @@
         <h1>Treasury Codes</h1>
         <p class="op-page-subtitle">Trinidad &amp; Tobago Estimates Chart of Accounts (Head / Sub-Head / Item / Sub-Item).</p>
     </div>
-    <a href="/admin/treasury-codes/create" class="op-btn op-btn-primary">+ Add Code</a>
-</div>
-
-{% if unmapped_invoices is not empty %}
-<div class="op-card" style="border-color:#fecaca;margin-bottom:1rem;">
-    <div class="op-card-body">
-        <strong style="color:#991b1b;">Invoices blocked until a Treasury Code is assigned</strong>
-        <p style="margin:.5rem 0 0;color:#7f1d1d;">Edit each invoice and pick Head / Sub-Head / Item / Sub-Item. Payment link mapping status is shown on <a href="/admin/payment-links">Payment Links</a>.</p>
-        <ul>
-            {% for row in unmapped_invoices %}
-            <li><a href="/admin/invoices/{{ row.id }}">{{ row.label }}</a> (#{{ row.id }})</li>
-            {% endfor %}
-        </ul>
+    <div class="op-header-actions">
+        <span class="op-text-muted op-text-sm">{{ pagination.total_items ?? 0 }} total</span>
+        <a href="/admin/treasury-codes/create" class="op-btn op-btn-primary">+ Add Code</a>
     </div>
 </div>
-{% endif %}
+
+{# -- Status chips ------------------------------------------------ #}
+<div class="op-filter-chips-row op-mb-3">
+    {% set statuses = [
+        {key: '', label: 'All'},
+        {key: 'active', label: 'Active'},
+        {key: 'inactive', label: 'Inactive'},
+    ] %}
+    {% for s in statuses %}
+    <a href="?status={{ s.key }}&q={{ filters.q|default('')|url_encode }}&head={{ filters.head|default('')|url_encode }}"
+       class="op-chip {{ (filters.status|default('')) == s.key ? 'op-chip-active' : '' }}
+              {% if s.key == 'active' %}op-chip-success{% elseif s.key == 'inactive' %}op-chip-muted{% endif %}">
+        {{ s.label }}
+    </a>
+    {% endfor %}
+</div>
+
+{# -- Search / filters -------------------------------------------- #}
+<div class="op-card op-mb-4">
+    <div class="op-card-body">
+        <form method="GET" class="op-advanced-filters" id="treasury-filter-form">
+            <input type="hidden" name="status" value="{{ filters.status|default('') }}">
+            <div class="op-filter-field op-flex-1">
+                <div class="op-filter-search-wrap">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="search" name="q" value="{{ filters.q|default('') }}" placeholder="Search code, ministry, tier name…" class="op-input op-input-sm op-search-input">
+                </div>
+            </div>
+            <div class="op-filter-field">
+                <select name="head" class="op-input op-input-sm">
+                    <option value="">All Heads</option>
+                    {% for head_code, head_name in heads %}
+                    <option value="{{ head_code }}" {{ filters.head|default('') == head_code ? 'selected' : '' }}>
+                        {{ head_code }} — {{ head_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="op-filter-btn">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                Filter
+            </button>
+            {% if filters.q or filters.head or filters.status %}
+            <a href="/admin/treasury-codes" class="op-filter-btn">✕ Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
 
 <div class="op-card">
-    <div class="op-card-body" style="overflow-x:auto;">
-        <table class="op-table">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Head</th>
-                    <th>Sub-Head</th>
-                    <th>Item</th>
-                    <th>Sub-Item</th>
-                    <th>Status</th>
-                    <th style="width:1%;white-space:nowrap;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in codes %}
-                <tr>
-                    <td><code>{{ row.code_full }}</code></td>
-                    <td>{{ row.head }} — {{ row.head_name|default('') }}</td>
-                    <td>{{ row.sub_head }} — {{ row.sub_head_name|default('') }}</td>
-                    <td>{{ row.item }} — {{ row.item_name|default('') }}</td>
-                    <td>{{ row.sub_item }} — {{ row.sub_item_name|default('') }}</td>
-                    <td>{{ row.status|capitalize }}</td>
-                    <td style="white-space:nowrap;">
-                        <div style="display:inline-flex;gap:0.5rem;align-items:center;">
-                            <a href="/admin/treasury-codes/{{ row.id }}" class="op-btn op-btn-sm op-btn-outline">View</a>
-                            <a href="/admin/treasury-codes/{{ row.id }}/edit" class="op-btn op-btn-sm op-btn-outline">Edit</a>
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="7">No treasury codes yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="op-card-body op-p-0">
+        <div class="op-table-responsive">
+            <table class="op-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Head</th>
+                        <th>Sub-Head</th>
+                        <th>Item</th>
+                        <th>Sub-Item</th>
+                        <th>Status</th>
+                        <th style="width:1%;white-space:nowrap;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in codes %}
+                    <tr>
+                        <td data-label="Code"><code>{{ row.code_full }}</code></td>
+                        <td data-label="Head">{{ row.head }} — {{ row.head_name|default('') }}</td>
+                        <td data-label="Sub-Head">{{ row.sub_head }} — {{ row.sub_head_name|default('') }}</td>
+                        <td data-label="Item">{{ row.item }} — {{ row.item_name|default('') }}</td>
+                        <td data-label="Sub-Item">{{ row.sub_item }} — {{ row.sub_item_name|default('') }}</td>
+                        <td data-label="Status">
+                            <span class="op-badge op-badge-{{ row.status == 'active' ? 'success' : 'muted' }}">
+                                {{ row.status|capitalize }}
+                            </span>
+                        </td>
+                        <td data-label="Actions" style="white-space:nowrap;">
+                            <div style="display:inline-flex;gap:0.5rem;align-items:center;">
+                                <a href="/admin/treasury-codes/{{ row.id }}" class="op-btn op-btn-xs op-btn-outline">View</a>
+                                <a href="/admin/treasury-codes/{{ row.id }}/edit" class="op-btn op-btn-xs op-btn-outline">Edit</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="op-empty">No treasury codes match the current filters.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+{% if pagination is defined and pagination.total_pages > 1 %}
+{% set qs = '' %}
+{% if filters.q is not empty %}{% set qs = qs ~ '&q=' ~ filters.q|url_encode %}{% endif %}
+{% if filters.status is not empty %}{% set qs = qs ~ '&status=' ~ filters.status|url_encode %}{% endif %}
+{% if filters.head is not empty %}{% set qs = qs ~ '&head=' ~ filters.head|url_encode %}{% endif %}
+<nav class="op-pagination op-mt-4">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.page - 1 }}{{ qs }}" class="op-page-link">← Prev</a>{% endif %}
+    <span class="op-page-info">Page {{ pagination.page }} of {{ pagination.total_pages }} ({{ pagination.total_items }} total)</span>
+    {% if pagination.has_next %}<a href="?page={{ pagination.page + 1 }}{{ qs }}" class="op-page-link">Next →</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

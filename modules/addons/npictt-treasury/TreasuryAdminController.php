@@ -5,11 +5,10 @@ namespace OwnPay\Modules\Addons\NpicttTreasury;
 
 use OwnPay\Container;
 use OwnPay\Controller\Admin\AdminPageTrait;
-use OwnPay\Core\Database;
-use OwnPay\Event\EventManager;
 use OwnPay\Http\Request;
 use OwnPay\Http\Response;
 use OwnPay\Service\Admin\AdminSession;
+use OwnPay\Service\System\PaginationService;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
@@ -49,48 +48,36 @@ final class TreasuryAdminController
     public function index(Request $request): Response
     {
         $this->ensureViewsRegistered();
+
+        $qRaw = $request->query('q', '');
+        $statusRaw = $request->query('status', '');
+        $headRaw = $request->query('head', '');
+        $pageRaw = $request->query('page', '1');
+
+        $filters = [
+            'q' => is_scalar($qRaw) ? trim((string) $qRaw) : '',
+            'status' => is_scalar($statusRaw) ? trim((string) $statusRaw) : '',
+            'head' => is_scalar($headRaw) ? trim((string) $headRaw) : '',
+        ];
+        if ($filters['status'] !== 'active' && $filters['status'] !== 'inactive') {
+            $filters['status'] = '';
+        }
+        if ($filters['head'] !== '' && preg_match('/^\d{1,2}$/', $filters['head']) !== 1) {
+            $filters['head'] = '';
+        }
+
+        $page = is_numeric($pageRaw) ? max(1, (int) $pageRaw) : 1;
+        $total = $this->codes->countFiltered($filters);
+        $pagination = PaginationService::calculate($page, 25, $total);
+        $codes = $this->codes->listFiltered($filters, $pagination['per_page'], $pagination['offset']);
+
         return $this->renderAdminPage('@npictt-treasury/admin/index.twig', [
             'active_page' => 'treasury-codes',
-            'codes' => $this->codes->listAll(),
-            'unmapped_invoices' => $this->countUnmappedInvoices(),
+            'codes' => $codes,
+            'filters' => $filters,
+            'pagination' => $pagination,
+            'heads' => TreasuryCatalogSeed::heads(),
         ]);
-    }
-
-    /**
-     * Open invoices that still need a treasury assignment (payment-link status lives on the links list).
-     *
-     * @return list<array{id: int, label: string}>
-     */
-    private function countUnmappedInvoices(): array
-    {
-        $events = $this->c->has(EventManager::class) ? $this->c->get(EventManager::class) : null;
-        if ($events instanceof EventManager) {
-            $events->pushOwner('core');
-        }
-        try {
-            $rows = Database::getInstance()->fetchAll(
-                "SELECT e.id, e.invoice_number AS label
-                 FROM op_invoices e
-                 LEFT JOIN op_plugin_npictt_treasury_assignments a
-                   ON a.entity_type = 'invoice' AND a.entity_id = e.id
-                 WHERE e.status NOT IN ('cancelled','paid') AND a.id IS NULL
-                 ORDER BY e.id DESC
-                 LIMIT 25"
-            );
-        } finally {
-            if ($events instanceof EventManager) {
-                $events->popOwner();
-            }
-        }
-
-        $out = [];
-        foreach ($rows as $row) {
-            $out[] = [
-                'id' => (int) ($row['id'] ?? 0),
-                'label' => is_string($row['label'] ?? null) ? $row['label'] : ('#' . (string) ($row['id'] ?? '')),
-            ];
-        }
-        return $out;
     }
 
     public function create(Request $request): Response

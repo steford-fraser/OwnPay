@@ -4,10 +4,30 @@
 <div class="op-page-header">
     <div>
         <h1>{{ invoice is not empty and invoice.id is defined and invoice.id ? 'Edit' : 'Create' }} Invoice</h1>
-        <p class="op-page-subtitle">Create or edit invoice details. A 4-tier Treasury Code is required.</p>
+        <p class="op-page-subtitle">Create or edit invoice details. A 4-tier Treasury Code is required before customers can pay.</p>
     </div>
     <a href="/admin/invoices" class="op-btn op-btn-outline">← Back</a>
 </div>
+
+{% if invoice is not empty and invoice.id is defined and invoice.id %}
+<div class="op-card op-mb-4" style="border-color: {{ treasury_status == 'mapped' ? '#bbf7d0' : '#fecaca' }};">
+    <div class="op-card-body">
+        {% if treasury_status == 'mapped' %}
+            <strong style="color:#166534;">Treasury Code assigned</strong>
+            <p style="margin:.35rem 0 0;" class="op-text-muted">
+                <code>{{ treasury_selected.code_full ?? '' }}</code>
+                — customers can pay this invoice.
+            </p>
+        {% else %}
+            <strong style="color:#991b1b;">Treasury Code missing</strong>
+            <p style="margin:.35rem 0 0;color:#7f1d1d;">
+                Select Head / Sub-Head / Item / Sub-Item below and save. Checkout stays blocked until a code is assigned.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <form method="POST" action="/admin/invoices/{{ invoice is not empty and invoice.id is defined and invoice.id ? invoice.id ~ '/update' : 'store' }}" class="op-form">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     <div class="op-grid op-grid-2">
